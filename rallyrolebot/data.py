@@ -249,6 +249,27 @@ def get_donate_message(db, guild_id):
 
 
 @connect_db
+def set_bot_name(db, guild_id, name):
+    table = db[CONFIG_TABLE]
+    table.upsert(
+        {
+            GUILD_ID_KEY: guild_id,
+            BOT_NAME_KEY: name,
+            CONFIG_NAME_KEY: BOT_NAME_KEY
+        },
+        [GUILD_ID_KEY, CONFIG_NAME_KEY],
+    )
+
+@connect_db
+def get_bot_name(db, guild_id):
+    table = db[CONFIG_TABLE]
+    row = table.find_one(guildId=guild_id, configName=BOT_NAME_KEY)
+    if row is not None:
+        return row[BOT_NAME_KEY]
+    return None
+
+
+@connect_db
 def add_user(db, discord_id, username, discriminator, guilds):
     table = db[USERS_TABLE]
     table.upsert(

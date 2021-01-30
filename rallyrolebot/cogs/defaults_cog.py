@@ -109,3 +109,12 @@ class DefaultsCommands(commands.Cog):
             title=f"All registered users",
             color=GREEN_COLOR,
         )
+
+    @commands.command(
+        name="change_bot_name",
+        help="Change the bot's name on this server"
+    )
+    @validation.owner_or_permissions(administrator=True)
+    async def set_bot_name(self, ctx, name):
+        data.set_bot_name(ctx.guild.id, name)
+        await update_cog.force_update(self.bot, ctx)

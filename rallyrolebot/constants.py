@@ -39,6 +39,7 @@ CONFIG_NAME_KEY = "configName"
 PURCHASE_MESSAGE_KEY = "purchaseMessage"
 DONATE_MESSAGE_KEY = "donateMessage"
 
+BOT_NAME_KEY = "bot_name"
 
 """
  Constants useful for  rally_api module
@@ -81,4 +82,5 @@ API_TAGS_METADATA = [
     {"name": "commands", "description": "Get list of all available bot commands"},
     {"name": "prefix", "description": "Command prefix in guild"},
     {"name": "roles", "description": "Coin role mappings"},
+    {"name": "bot_config", "description": "Guild specific bot configuration"},
 ]

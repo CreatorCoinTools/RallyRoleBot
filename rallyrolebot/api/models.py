@@ -31,3 +31,7 @@ class PrefixMapping(BaseModel):
 class Command(BaseModel):
     name: str
     description: str
+
+class BotConfigMapping(BaseModel):
+    guildId: Optional[str] = None
+    bot_name: str

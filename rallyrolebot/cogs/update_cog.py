@@ -161,6 +161,10 @@ class UpdateTask(commands.Cog):
                                 channel_mapping, member, balances
                             )
 
+                # Update bot config
+                bot_name = data.get_bot_name(guild.id)
+                await guild.me.edit(nick=bot_name)
+
             print(
                 "Done! Checked "
                 + str(guild_count)
