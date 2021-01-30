@@ -8,7 +8,7 @@ from .models import BotConfigMapping
 router = APIRouter(
     prefix="/mappings/bot_config",
     tags=["bot_config"],
-    dependencies=[],
+    dependencies=[Depends(owner_or_admin)],
     responses={404: {"description": "Not found"}},
 )
 
