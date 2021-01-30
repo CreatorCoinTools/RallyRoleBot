@@ -48,3 +48,8 @@ async def owner_or_admin(guildId: str, authorization: str = Header(...)):
     guilds = owner_or_admin_guilds(authorization)
     if not guilds or not guildId in guilds:
         raise HTTPException(status_code=400, detail="you cannot access this record")
+
+
+async def bot_owner(authorization: str = Header(...)):
+    # TODO: Implement bot_owner check
+    raise HTTPException(status_code=400, detail="you cannot access this record")

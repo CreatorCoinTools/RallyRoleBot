@@ -118,3 +118,14 @@ class DefaultsCommands(commands.Cog):
     async def set_bot_name(self, ctx, name):
         data.set_bot_name(ctx.guild.id, name)
         await update_cog.force_update(self.bot, ctx)
+
+    @commands.command(
+        name="change_bot_avatar",
+        help="Changes the bot's global avatar for all servers"
+    )
+    @commands.is_owner()
+    async def set_bot_avatar(self, ctx, url):
+        data.set_bot_avatar(url)
+        data.set_bot_avatar_hash("")
+        await update_cog.force_update(self.bot, ctx)
+        data.set_bot_avatar_hash(self.bot.user.avatar)

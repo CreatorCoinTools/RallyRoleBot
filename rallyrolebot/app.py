@@ -8,6 +8,7 @@ from api import (
     prefix_mappings,
     coin_mappings,
     bot_config_mappings,
+    bot_globals_mappings,
     commands,
 )
 import config
@@ -35,6 +36,7 @@ app.include_router(role_mappings.router)
 app.include_router(prefix_mappings.router)
 app.include_router(coin_mappings.router)
 app.include_router(bot_config_mappings.router)
+app.include_router(bot_globals_mappings.router)
 app.include_router(commands.router)
 
 

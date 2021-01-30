@@ -162,8 +162,22 @@ class UpdateTask(commands.Cog):
                             )
 
                 # Update bot config
-                bot_name = data.get_bot_name(guild.id)
-                await guild.me.edit(nick=bot_name)
+                try:
+                    bot_name = data.get_bot_name(guild.id)
+                    if bot_name != guild.me.nick:
+                        await guild.me.edit(nick=bot_name)
+                except discord.errors.HTTPException as e:
+                    print("Failed to update bot's nickname:", e)
+
+                try:
+                    bot_avatar = data.get_bot_avatar()
+                    bot_avatar_hash = data.get_bot_avatar_hash()
+                    if bot_avatar_hash != self.bot.user.avatar:
+                        print("Updating avatar")
+                        await self.bot.user.edit(avatar=bot_avatar)
+                except discord.errors.HTTPException as e:
+                    print("Failed to update bot's avatar:", e)
+                    data.set_bot_avatar_hash("")
 
             print(
                 "Done! Checked "

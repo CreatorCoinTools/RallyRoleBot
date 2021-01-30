@@ -40,6 +40,9 @@ PURCHASE_MESSAGE_KEY = "purchaseMessage"
 DONATE_MESSAGE_KEY = "donateMessage"
 
 BOT_NAME_KEY = "bot_name"
+BOT_AVATAR_KEY = "bot_avatar"
+BOT_AVATAR_URL_KEY = "bot_avatar_url"
+BOT_AVATAR_HASH_KEY = "bot_avatar_hash"
 
 """
  Constants useful for  rally_api module

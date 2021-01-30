@@ -35,3 +35,7 @@ class Command(BaseModel):
 class BotConfigMapping(BaseModel):
     guildId: Optional[str] = None
     bot_name: str
+
+class BotGlobalsMapping(BaseModel):
+    bot_avatar_url: str
+    bot_avatar_hash: Optional[str] = ""

@@ -1,5 +1,6 @@
 import dataset
 import datetime
+import urllib
 
 import config
 from constants import *
@@ -266,6 +267,70 @@ def get_bot_name(db, guild_id):
     row = table.find_one(guildId=guild_id, configName=BOT_NAME_KEY)
     if row is not None:
         return row[BOT_NAME_KEY]
+    return None
+
+
+@connect_db
+def set_bot_avatar(db, url):
+    try:
+        response = urllib.request.urlopen(url)
+
+        table = db[CONFIG_TABLE]
+        table.upsert(
+            {
+                BOT_AVATAR_KEY: response.read(),
+                CONFIG_NAME_KEY: BOT_AVATAR_KEY
+            },
+            [CONFIG_NAME_KEY],
+        )
+        table.upsert(
+            {
+                BOT_AVATAR_URL_KEY: url,
+                CONFIG_NAME_KEY: BOT_AVATAR_URL_KEY
+            },
+            [CONFIG_NAME_KEY],
+        )
+
+    except urllib.error.HTTPError as e:
+        raise Exception("Failed to download avatar") from e
+
+
+@connect_db
+def get_bot_avatar(db):
+    table = db[CONFIG_TABLE]
+    row = table.find_one(configName=BOT_AVATAR_KEY)
+    if row is not None:
+        return row[BOT_AVATAR_KEY]
+    return None
+
+
+@connect_db
+def get_bot_avatar_url(db):
+    table = db[CONFIG_TABLE]
+    row = table.find_one(configName=BOT_AVATAR_URL_KEY)
+    if row is not None:
+        return row[BOT_AVATAR_URL_KEY]
+    return None
+
+
+@connect_db
+def set_bot_avatar_hash(db, hash):
+    table = db[CONFIG_TABLE]
+    table.upsert(
+        {
+            BOT_AVATAR_HASH_KEY: hash,
+            CONFIG_NAME_KEY: BOT_AVATAR_HASH_KEY
+        },
+        [CONFIG_NAME_KEY],
+    )
+
+
+@connect_db
+def get_bot_avatar_hash(db):
+    table = db[CONFIG_TABLE]
+    row = table.find_one(configName=BOT_AVATAR_HASH_KEY)
+    if row is not None:
+        return row[BOT_AVATAR_HASH_KEY]
     return None
 
 
