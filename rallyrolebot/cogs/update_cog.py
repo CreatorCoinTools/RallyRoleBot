@@ -14,6 +14,7 @@ import data
 import rally_api
 import validation
 
+from cogs import defaults_cog
 
 async def grant_deny_channel_to_member(channel_mapping, member, balances):
     """
@@ -171,8 +172,15 @@ class UpdateTask(commands.Cog):
 
                 try:
                     bot_avatar = data.get_bot_avatar()
+                    bot_avatar_url = data.get_bot_avatar_url()
                     bot_avatar_hash = data.get_bot_avatar_hash()
-                    if bot_avatar_hash != self.bot.user.avatar:
+                    if not bot_avatar_url:
+                        url = DEFAULT_BOT_AVATAR_URL
+                        data.set_bot_avatar(url)
+                        data.set_bot_avatar_hash("")
+                        await self.update()
+                        data.set_bot_avatar_hash(self.bot.user.avatar)
+                    elif bot_avatar_hash != self.bot.user.avatar:
                         print("Updating avatar")
                         await self.bot.user.edit(avatar=bot_avatar)
                 except discord.errors.HTTPException as e:
