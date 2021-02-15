@@ -586,9 +586,9 @@ def delete_timers(db, guildId):
 
 
 @connect_db
-def get_all_timers(db):
+def get_all_timers(db, bot_id):
     table = db[TIMERS_TABLE]
-    return [t for t in table.all()]
+    return [t for t in table.all(botId=bot_id)]
 
 
 @connect_db

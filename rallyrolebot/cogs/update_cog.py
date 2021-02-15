@@ -354,7 +354,7 @@ class UpdateTask(commands.Cog):
 
     async def run_old_timers(self):
         print(f'running old timers')
-        timers = data.get_all_timers()
+        timers = data.get_all_timers(self.bot.user.id)
         for timer in timers:
             asyncio.create_task(self.run_timer(timer))
 
