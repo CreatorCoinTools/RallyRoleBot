@@ -97,6 +97,7 @@ class DefaultsCommands(commands.Cog):
         help='<day/week> - list the following stats in the coin alerts channel based on the time given'
     )
     async def allcoinstats(self, ctx, timeframe=''):
+        data.delete_week_old()
         timeframe = timeframe.lower()
         if timeframe not in ['day', 'week']:
             return await pretty_print(
@@ -109,8 +110,11 @@ class DefaultsCommands(commands.Cog):
                 ctx, "A default coin has not been set. An admin can set the default coin by typing $setdefaultcoin . Type $help for more information.", title="Error", color=ERROR_COLOR
             )
 
-        coin_day_stats = data.get_coin_stats_day(default_coin)
-        total_stats = rally_api.get_coin_summary(default_coin)
+        if timeframe == 'day':
+            coin_stats = update_cog.get_day_stats(default_coin)
+        else:
+            coin_stats = update_cog.get_week_stats(default_coin)
+
         rewards = rally_api.get_coin_rewards(default_coin)
         coin_image_url = rally_api.get_coin_image_url(default_coin)
 
@@ -118,11 +122,11 @@ class DefaultsCommands(commands.Cog):
         reward_str = 'last24HourEarned' if timeframe == 'day' else 'weeklyAccumulatedReward'
         message = {
             "description": f"```xl\n"
-                           f"- {extra_str}`s # of purchases: {coin_day_stats[PURCHASES_KEY]}\n\n"
-                           f"- {extra_str}`s # of donations: {coin_day_stats[DONATIONS_KEY]}\n\n"
-                           f"- {extra_str}`s # of transfers: {coin_day_stats[TRANSFERS_KEY]}\n\n"
-                           f"- {extra_str}`s # of conversions: {coin_day_stats[CONVERSIONS_KEY]}\n\n"
-                           f"- {extra_str}`s # of redeems: {coin_day_stats[REDEEMS_KEY]}\n\n"
+                           f"- {extra_str}`s # of purchases: {len(coin_stats['buy'])}\n\n"
+                           f"- {extra_str}`s # of donations: {len(coin_stats['donate'])}\n\n"
+                           f"- {extra_str}`s # of transfers: {len(coin_stats['transfer'])}\n\n"
+                           f"- {extra_str}`s # of conversions: {len(coin_stats['convert'])}\n\n"
+                           f"- {extra_str}`s # of redeems: {len(coin_stats['redeem'])}\n\n"
                            f"- {extra_str}`s # of rewards earned: {rewards[reward_str]}\n"
                            f"```",
             "color": 0xff0000,

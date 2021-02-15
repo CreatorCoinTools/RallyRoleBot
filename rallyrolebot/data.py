@@ -2,6 +2,7 @@ import dataset
 import datetime
 import json
 import config
+import time
 
 from constants import *
 from utils.ext import connect_db
@@ -591,34 +592,40 @@ def get_all_timers(db):
 
 
 @connect_db
-def add_coin_stats_day(db, **kwargs):
-    table = db[COIN_STATS_DAY_TABLE]
-
-    stats = {}
-    for kwarg in kwargs:
-        stats[kwarg] = kwargs[kwarg]
-
-    table.upsert(stats, [COIN_KIND_KEY])
-
-
-@connect_db
-def get_coin_stats_day(db, coinKind):
-    table = db[COIN_STATS_DAY_TABLE]
-    return table.find_one(coinKind=coinKind)
+def add_event(db, event, coin):
+    table = db[EVENTS_TABLE]
+    table.insert({
+        EVENT_KEY: event,
+        COIN_KIND_KEY: coin,
+        TIME_ADDED_KEY: time.time()
+    })
 
 
 @connect_db
-def get_coin_stats_week(db, coinKind):
-    table = db[COIN_STATS_WEEK_TABLE]
-    return table.find_one(coinKind=coinKind)
+def get_events(db, event, coin):
+    table = db[EVENTS_TABLE]
+    rows = table.find(event=event, coinKind=coin)
+    return [r for r in rows]
 
 
 @connect_db
-def add_coin_stats_week(db, **kwargs):
-    table = db[COIN_STATS_WEEK_TABLE]
+def get_day_events(db, event, coin):
+    table = db[EVENTS_TABLE]
+    ago_24h = time.time() - (24 * 3600)
+    return [r for r in table.find(event=event, coinKind=coin, timeAdded={'gt': ago_24h})]
 
-    stats = {}
-    for kwarg in kwargs:
-        stats[kwarg] = kwargs[kwarg]
 
-    table.upsert(stats, [COIN_KIND_KEY])
+@connect_db
+def get_week_events(db, event, coin):
+    table = db[EVENTS_TABLE]
+    ago_1week = time.time() - (7 * 24 * 3600)
+    return [r for r in table.find(coinKind=coin, event=event, timeAdded={'gt': ago_1week})]
+
+
+@connect_db
+def delete_week_old(db):
+    table = db[EVENTS_TABLE]
+    ago_1week = time.time() - (7 * 24 * 3600)
+    week_old = table.find(timeAdded={'lt': ago_1week})
+    for event in week_old:
+        table.delete(id=event['id'])

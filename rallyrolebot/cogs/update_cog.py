@@ -148,29 +148,8 @@ async def get_webhook_url(guild_id, channel_name):
 async def process_payload(payload: dict):
     # add to stats
     coin_kind = payload['coinKind']
-    coin_stats_day = data.get_coin_stats_day(coin_kind)
-    if not coin_stats_day:
-        coin_stats_day = {
-            COIN_KIND_KEY: coin_kind,
-            PURCHASES_KEY: 0,
-            DONATIONS_KEY: 0,
-            TRANSFERS_KEY: 0,
-            CONVERSIONS_KEY: 0,
-            REDEEMS_KEY: 0
-        }
-
-    event_to_stats_switch = {
-        'buy': PURCHASES_KEY,
-        'donate': DONATIONS_KEY,
-        'transfer': TRANSFERS_KEY,
-        'convert': CONVERSIONS_KEY,
-        'redeem': REDEEMS_KEY,
-    }
-
     event = payload['event'].lower()
-    coin_stats_day[event_to_stats_switch.get(event)] += 1
-
-    data.add_coin_stats_day(**coin_stats_day)
+    data.add_event(event, coin_kind)
 
     # send webhook message
     alerts_settings = data.get_all_alerts_settings()
@@ -348,6 +327,26 @@ async def update_avatar(bot_instance, new_avatar=None):
     return error
 
 
+def get_day_stats(coin):
+    return {
+        'buy': data.get_day_events('buy', coin),
+        'donate': data.get_day_events('donate', coin),
+        'transfer': data.get_day_events('transfer', coin),
+        'convert': data.get_day_events('convert', coin),
+        'redeem': data.get_day_events('redeem', coin),
+    }
+
+
+def get_week_stats(coin):
+    return {
+        'buy': data.get_week_events('buy', coin),
+        'donate': data.get_week_events('donate', coin),
+        'transfer': data.get_week_events('transfer', coin),
+        'convert': data.get_week_events('convert', coin),
+        'redeem': data.get_week_events('redeem', coin),
+    }
+
+
 class UpdateTask(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -382,13 +381,14 @@ class UpdateTask(commands.Cog):
 
     @commands.Cog.listener()
     async def on_daily_stats_timer_over(self, timer):
+        data.delete_week_old()
         guild_id = timer['guild_id']
         channel_name = timer['extras']['channel_name']
         webhook_url = await get_webhook_url(guild_id, channel_name)
 
         default_coin = data.get_default_coin(int(guild_id))
         if webhook_url:
-            coin_day_stats = data.get_coin_stats_day(default_coin)
+            coin_day_stats = get_day_stats(default_coin)
             total_stats = rally_api.get_coin_summary(default_coin)
             rewards = rally_api.get_coin_rewards(default_coin)
             coin_image_url = rally_api.get_coin_image_url(default_coin)
@@ -399,11 +399,11 @@ class UpdateTask(commands.Cog):
                   "description": f"```xl\n- Total # of coins: {total_stats['totalCoins']}\n\n"
                                  f"- Total # of supporters: {total_stats['totalSupporters']}\n\n"
                                  f"- Total Support Volume: {total_stats['totalSupportVolume']} USD\n\n\n"
-                                 f"- Today`s # of purchases: {coin_day_stats[PURCHASES_KEY]}\n\n"
-                                 f"- Today`s # of donations: {coin_day_stats[DONATIONS_KEY]}\n\n"
-                                 f"- Today`s # of transfers: {coin_day_stats[TRANSFERS_KEY]}\n\n"
-                                 f"- Today`s # of conversions: {coin_day_stats[CONVERSIONS_KEY]}\n\n"
-                                 f"- Today`s # of redeems: {coin_day_stats[REDEEMS_KEY]}\n\n"
+                                 f"- Today`s # of purchases: {len(coin_day_stats['buy'])}\n\n"
+                                 f"- Today`s # of donations: {len(coin_day_stats['donate'])}\n\n"
+                                 f"- Today`s # of transfers: {len(coin_day_stats['transfer'])}\n\n"
+                                 f"- Today`s # of conversions: {len(coin_day_stats['convert'])}\n\n"
+                                 f"- Today`s # of redeems: {len(coin_day_stats['redeem'])}\n\n"
                                  f"- Today`s # of rewards earned: {rewards['last24HourEarned']}\n```",
                   "color": 0xff0000,
                   "author": {
@@ -416,20 +416,6 @@ class UpdateTask(commands.Cog):
             }
 
             requests.post(webhook_url, json=message)
-
-        # 0 out week stats if day is money
-        timezone = int(timer['extras']['timezone'])
-        check = 0 if timezone >= 0 else 6
-        if datetime.datetime.utcnow().weekday() == check:
-            coin_stats_week = {
-                COIN_KIND_KEY: default_coin,
-                PURCHASES_KEY: 0,
-                DONATIONS_KEY: 0,
-                TRANSFERS_KEY: 0,
-                CONVERSIONS_KEY: 0,
-                REDEEMS_KEY: 0
-            }
-            data.add_coin_stats_week(coin_stats_week)
 
         # start timer again
         if timer['bot_id'] in running_bots:
