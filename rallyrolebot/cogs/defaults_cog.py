@@ -38,58 +38,59 @@ class DefaultsCommands(commands.Cog):
             type(error), error, error.__traceback__, file=sys.stderr
         )
 
-    async def update_setting(self, ctx, alert, channel, value, setting):
-        if not alert or not channel or not value:
-            return await pretty_print(ctx, "Missing <alert>, <channel> or <value>", title='Error', color=ERROR_COLOR)
-
-        channel_object = None
-        if type(channel) == str:
-            channel_object = discord.utils.get(ctx.guild.channels, name=channel)
-        elif ctx.message.channel_mentions:
-            channel_object = ctx.message.channel_mentions[0]
-
-        if not channel_object:
-            return await pretty_print(ctx, "Invalid <channel>", title='Error', color=ERROR_COLOR)
+    async def update_setting(self, ctx, alert, alert_nr, value, setting):
+        if not alert or not alert_nr or not value:
+            return await pretty_print(ctx, "Missing <alert>, <alert_nr> or <value>", title='Error', color=ERROR_COLOR)
 
         settings = data.get_alerts_settings(ctx.guild.id)
-        if not settings:
-            return await pretty_print(ctx, "Alert settings have not been configured on the dashboard", title='Error', color=ERROR_COLOR)
-
         settings = settings[ALERTS_SETTINGS_KEY]
 
         if alert not in settings:
             return await pretty_print(ctx, "Invalid <Alert>", title='Error', color=ERROR_COLOR)
 
-        instance = [i for (i, instance) in enumerate(settings[alert]['instances']) if
-                    instance['channel'] == channel_object.name]
-        if not instance:
-            return await pretty_print(ctx, "Couldn't find an entry with that channel name", title='Error', color=ERROR_COLOR)
+        channel_object = None
+        instance = None
+        if alert_nr.isdigit():
+            if int(alert_nr) > len(settings[alert]['instances']) or int(alert_nr) < 0:
+                return await pretty_print(ctx, "Couldn't find an entry by that alert number", title='Error', color=ERROR_COLOR)
 
-        settings[alert]['instances'][instance[0]]['settings'][setting] = value
+            instance = settings[alert]['instances'][int(alert_nr) - 1]
+            channel_object = discord.utils.get(ctx.guild.channels, name=instance['channel'])
+
+        if not channel_object or not instance:
+            return await pretty_print(ctx, "Invalid <alert_nr>", title='Error', color=ERROR_COLOR)
+
+        if not settings:
+            return await pretty_print(ctx, "Alert settings have not been configured on the dashboard", title='Error', color=ERROR_COLOR)
+
+        instance['settings'][setting] = value
         data.set_alerts_settings(ctx.guild.id, json.dumps(settings))
 
         return await pretty_print(ctx, "Alert settings have been updated", title='Success', color=SUCCESS_COLOR)
 
     @commands.command(
         name='setmin',
-        help='<alert> <channel> <value> - Set the minimum amount for an alert'
+        help='<alert> <alert nr> <value> - Set the minimum amount for an alert'
     )
-    async def setmin(self, ctx, alert=None, channel=None, value=None):
-        return await self.update_setting(ctx, alert, channel, value, 'minamount')
+    async def setmin(self, ctx, alert=None, alert_nr=None, value=None):
+        return await self.update_setting(ctx, alert, alert_nr, value, 'minamount')
 
     @commands.command(
         name='setmax',
-        help='<alert> <channel> <value> - Set the minimum amount for an alert'
+        help='<alert> <alert nr> <value> - Set the minimum amount for an alert'
     )
-    async def setmax(self, ctx, alert=None, channel=None, value=None):
-        return await self.update_setting(ctx, alert, channel, value, 'maxamount')
+    async def setmax(self, ctx, alert=None, alert_nr=None, value=None):
+        return await self.update_setting(ctx, alert, alert_nr, value, 'maxamount')
 
     @commands.command(
         name='settimezone',
-        help='<channel> <value (-12 - +12)> - Set timezone setting for daily stats message'
+        help='<alert nr> <value (-12 - +12)> - Set timezone setting for daily stats message'
     )
-    async def settimezone(self, ctx, channel=None, value=None):
-        return await self.update_setting(ctx, 'daily_stats', channel, value, 'timezone')
+    async def settimezone(self, ctx, alert_nr=None, value=None):
+        if not alert_nr or not value:
+            return await pretty_print(ctx, "Missing <alert_nr> or <value>", title='Error', color=ERROR_COLOR)
+
+        return await self.update_setting(ctx, 'daily_stats', alert_nr, value, 'timezone')
 
     @commands.command(
         name='allcoinstats',
