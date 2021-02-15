@@ -233,10 +233,11 @@ class DefaultsCommands(commands.Cog):
         registered_users = data.get_all_users()
         for user in registered_users:
             member = await ctx.guild.fetch_member(user[DISCORD_ID_KEY])
-            usersStr += f"{member}\nRallyId: {user[RALLY_ID_KEY]}\nDiscordId: {user[DISCORD_ID_KEY]}\n\n"
+            if member:
+                usersStr += f"{member}\nRallyId: {user[RALLY_ID_KEY]}\nDiscordId: {user[DISCORD_ID_KEY]}\n\n"
         await pretty_print(
             ctx,
-            usersStr,
+            usersStr or "No registered users on this server",
             title=f"All registered users",
             color=GREEN_COLOR,
         )

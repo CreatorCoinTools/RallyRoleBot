@@ -90,15 +90,7 @@ class RallyCommands(commands.Cog):
     async def unset_rally_id(self, ctx, rally_id):
         data.remove_discord_rally_mapping(ctx.author.id, rally_id)
 
-    @commands.command(
-        name="admin_unset_rally_id",
-        help=" <discord ID> <rally ID> Unset rally ID to discord ID mapping",
-    )
-    @validation.owner_or_permissions(administrator=True)
-    async def admin_unset_rally_id(self, ctx, discord_id: discord.User, rally_id):
-        data.remove_discord_rally_mapping(discord_id, rally_id)
-
-
+ 
     @commands.command(
         name="coinlink",
         help="To generate a custom coin link, type $coinlink <CoinName> <COIN/USD> <Amount> <Memo>",
@@ -118,6 +110,7 @@ class RallyCommands(commands.Cog):
         )
 
         await pretty_print(deeplink)
+
 
     @commands.command(name="balance", help="View your balance")
     @commands.dm_only()

@@ -34,6 +34,7 @@ class RallyRoleBot(commands.Bot):
         self.add_cog(cogs.defaults_cog.DefaultsCommands(self))
         self.add_cog(cogs.update_cog.UpdateTask(self))
 
+        data.delete_all_commands()
         for command in self.commands:
             data.add_command(command.name, command.help)
 
@@ -89,5 +90,5 @@ class RallyRoleBot(commands.Bot):
 
 
 bot = RallyRoleBot()
-if __name__ == '__main__':
+if __name__ == "__main__":
     bot.run(config.CONFIG.secret_token)

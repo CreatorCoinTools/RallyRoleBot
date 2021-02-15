@@ -31,7 +31,7 @@ from utils.ext import connect_db
     
     #################### default_coin ######################
     guildId
-    coin
+    coinKind
 
     #################### server_config ####################
     purchaseMessage
@@ -51,6 +51,11 @@ from utils.ext import connect_db
     #################### commands ####################
     name
     description
+    
+    #################### coin_price #################
+    date
+    price
+    coinKind
 
 """
 
@@ -321,6 +326,57 @@ def get_all_commands(db):
 
 
 @connect_db
+def delete_all_commands(db):
+    table = db[COMMANDS_TABLE]
+    table.delete()
+
+
+@connect_db
+def add_coin_price(db, price, coin):
+    table = db[COIN_PRICE_TABLE]
+    table.insert(
+        {
+            TIME_CREATED_KEY: datetime.datetime.now(),
+            PRICE_KEY: price,
+            COIN_KIND_KEY: coin,
+        }
+    )
+
+
+@connect_db
+def add_coin_price_multiple(db, prices):
+    table = db[COIN_PRICE_TABLE]
+    table.insert_many(prices)
+
+
+@connect_db
+def clean_price_cache(db, limit):
+    table = db[COIN_PRICE_TABLE]
+    old = table.all(order_by="id", _limit=limit)
+    for price in old:
+        table.delete(id=price["id"])
+
+
+@connect_db
+def price_count(db):
+    table = db[COIN_PRICE_TABLE]
+    return table.__len__()
+
+
+@connect_db
+def get_coin_prices(db, coin, limit):
+    limit = limit or 24
+    table = db[COIN_PRICE_TABLE]
+    return table.find(coinKind=coin, order_by="-id", _limit=limit)
+
+
+@connect_db
+def get_last_24h_price(db, coin):
+    table = db[COIN_PRICE_TABLE]
+    return list(table.find(coinKind=coin, order_by="-id", _limit=24))[-1]
+
+
+@connect_db
 def set_bot_avatar(db, guildId, bot_avatar):
     table = db[BOT_INSTANCES_KEY]
     table.update(
@@ -381,7 +437,7 @@ def add_bot_instance(db, guildId, bot_instance):
             AVATAR_TIMEOUT_KEY: 0,
             NAME_TIMEOUT_KEY: 0,
             BOT_ACTIVITY_TYPE_KEY: "",
-            BOT_ACTIVITY_TEXT_KEY: ""
+            BOT_ACTIVITY_TEXT_KEY: "",
         }
     )
 
@@ -401,9 +457,7 @@ def get_bot_instance_token(db, token):
 @connect_db
 def remove_bot_instance(db, guildId):
     table = db[BOT_INSTANCES_KEY]
-    table.delete(
-        guildId=guildId
-    )
+    table.delete(guildId=guildId)
 
 
 @connect_db

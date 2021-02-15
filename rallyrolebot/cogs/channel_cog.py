@@ -105,13 +105,15 @@ class ChannelCommands(commands.Cog):
     @commands.command(name="get_channel_mappings", help="Get channel mappings")
     @validation.owner_or_permissions(administrator=True)
     async def get_channel_mappings(self, ctx):
-        await ctx.send(
-            json.dumps(
-                [
-                    json.dumps(mapping)
-                    for mapping in data.get_channel_mappings(ctx.guild.id)
-                ]
-            )
+        mappingsStr = "```Channel   Coin   Amount\n\n"
+        for mapping in data.get_channel_mappings(ctx.guild.id):
+            mappingsStr += f"{mapping[CHANNEL_NAME_KEY]}   {mapping[COIN_KIND_KEY]}   {mapping[REQUIRED_BALANCE_KEY]}\n"
+        mappingsStr += "```"
+        await pretty_print(
+            ctx,
+            mappingsStr,
+            title=f"Role mappings",
+            color=GREEN_COLOR,
         )
 
     @commands.command(name="set_purchase_message", help="Change the $purchase message")
