@@ -89,7 +89,7 @@ async def format_alert_message(event, payload, instance):
     else:
         payload['costInUSD'] = payload['costInUSCents'] // 100
 
-    variables = re.findall(r'({.*})', description)
+    variables = re.findall(r'({\w+})', description)
     for var in variables:
         try:
             description = description.replace(var, var.format(**payload))

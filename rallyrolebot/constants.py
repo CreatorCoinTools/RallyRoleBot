@@ -66,6 +66,7 @@ TIMERS_TABLE = 'timers_table'
 
 COIN_STATS_DAY_TABLE = 'coinStatsDayTable'
 COIN_STATS_WEEK_TABLE = 'coinStatsWeekTable'
+COIN_KIND_KEY = 'coinKind'
 PURCHASES_KEY = 'purchases'
 DONATIONS_KEY = 'donations'
 TRANSFERS_KEY = 'transfers'
