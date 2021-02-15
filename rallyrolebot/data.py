@@ -1,9 +1,9 @@
 import dataset
 import datetime
-
+import json
 import config
-from constants import *
 
+from constants import *
 from utils.ext import connect_db
 
 """Functions for managing a dataset SQL database
@@ -190,7 +190,13 @@ def get_prefix(db, guild_id):
 @connect_db
 def add_default_coin(db, guild_id, coin=None):
     table = db[DEFAULT_COIN_TABLE]
-    table.upsert({GUILD_ID_KEY: guild_id, COIN_KIND_KEY: coin}, [GUILD_ID_KEY])
+    table.upsert(
+        {
+            GUILD_ID_KEY: guild_id,
+            COIN_KIND_KEY: coin
+        },
+        [GUILD_ID_KEY]
+    )
 
 
 @connect_db
@@ -442,3 +448,123 @@ def set_activity(db, guildId, activity_type, activity_text):
         },
         [GUILD_ID_KEY],
     )
+
+
+@connect_db
+def set_alerts_settings(db, guildId, alerts_settings):
+    table = db[ALERT_SETTINGS_TABLE]
+    table.upsert(
+        {
+            GUILD_ID_KEY: guildId,
+            ALERTS_SETTINGS_KEY: alerts_settings
+        },
+        [GUILD_ID_KEY]
+    )
+
+
+@connect_db
+def get_alerts_settings(db, guildId):
+    table = db[ALERT_SETTINGS_TABLE]
+    settings = table.find_one(guildId=guildId)
+    if settings:
+        settings_dict = {
+            ALERTS_SETTINGS_KEY: json.loads(settings[ALERTS_SETTINGS_KEY])
+        }
+        return settings_dict
+
+
+@connect_db
+def get_all_alerts_settings(db):
+    table = db[ALERT_SETTINGS_TABLE]
+    return [s for s in table.all()]
+
+
+@connect_db
+def add_webhook(db, guildId, channelId, webhook_uri, webhook_id, webhook_token):
+    table = db[WEBHOOKS_TABLE]
+    table.upsert(
+        {
+            GUILD_ID_KEY: guildId,
+            WEBHOOK_CHANNEL_ID: channelId,
+            WEBHOOK_URI: webhook_uri,
+            WEBHOOK_ID: webhook_id,
+            WEBHOOK_TOKEN: webhook_token
+        },
+        [GUILD_ID_KEY, WEBHOOK_CHANNEL_ID]
+    )
+
+
+@connect_db
+def get_webhook(db, guildId, channelId):
+    table = db[WEBHOOKS_TABLE]
+    return table.find_one(guildId=guildId, webhook_channel=channelId)
+
+
+@connect_db
+def get_all_webhooks(db):
+    table = db[WEBHOOKS_TABLE]
+    return [t for t in table.all()]
+
+
+@connect_db
+def add_timer(db, timer):
+    table = db[TIMERS_TABLE]
+    return table.upsert(timer, [GUILD_ID_KEY])
+
+
+@connect_db
+def get_timer(db, id):
+    table = db[TIMERS_TABLE]
+    return table.find_one(id=id)
+
+
+@connect_db
+def delete_timer(db, id):
+    table = db[TIMERS_TABLE]
+    table.delete(id=id)
+
+
+@connect_db
+def delete_timers(db, guildId):
+    table = db[TIMERS_TABLE]
+    table.delete(guild_id=guildId)
+
+
+@connect_db
+def get_all_timers(db):
+    table = db[TIMERS_TABLE]
+    return [t for t in table.all()]
+
+
+@connect_db
+def add_coin_stats_day(db, **kwargs):
+    table = db[COIN_STATS_DAY_TABLE]
+
+    stats = {}
+    for kwarg in kwargs:
+        stats[kwarg] = kwargs[kwarg]
+
+    table.upsert(stats, [COIN_KIND_KEY])
+
+
+@connect_db
+def get_coin_stats_day(db, coinKind):
+    table = db[COIN_STATS_DAY_TABLE]
+    return table.find_one(coinKind=coinKind)
+
+
+@connect_db
+def get_coin_stats_week(db, coinKind):
+    table = db[COIN_STATS_WEEK_TABLE]
+    return table.find_one(coinKind=coinKind)
+
+
+@connect_db
+def add_coin_stats_week(db, **kwargs):
+    table = db[COIN_STATS_WEEK_TABLE]
+
+    stats = {}
+    for kwarg in kwargs:
+        stats[kwarg] = kwargs[kwarg]
+
+    table.upsert(stats, [COIN_KIND_KEY])

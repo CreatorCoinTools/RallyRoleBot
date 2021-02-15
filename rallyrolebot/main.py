@@ -1,18 +1,17 @@
 import discord
 from discord.ext import commands
+from cogs import *
 import asyncio
 import config
 import data
-from cogs import *
+import cogs
 import functools
 import app
 import signal
 
 
 config.parse_args()
-intents = discord.Intents.default()
-intents.guilds = True
-intents.members = True
+intents = discord.Intents.all()
 default_prefix = config.CONFIG.command_prefix
 
 
@@ -26,13 +25,14 @@ def prefix(bot, ctx):
 
 class RallyRoleBot(commands.Bot):
     def __init__(self):
-        super().__init__(command_prefix=prefix, case_insensitive=True, intents=intents)
+        super().__init__(command_prefix=prefix, case_insensitive=True, intents=intents,
+                         chunk_guilds_at_startup=True)
 
-        self.add_cog(role_cog.RoleCommands(self))
-        self.add_cog(channel_cog.ChannelCommands(self))
-        self.add_cog(rally_cog.RallyCommands(self))
-        self.add_cog(defaults_cog.DefaultsCommands(self))
-        self.add_cog(update_cog.UpdateTask(self))
+        self.add_cog(cogs.role_cog.RoleCommands(self))
+        self.add_cog(cogs.channel_cog.ChannelCommands(self))
+        self.add_cog(cogs.rally_cog.RallyCommands(self))
+        self.add_cog(cogs.defaults_cog.DefaultsCommands(self))
+        self.add_cog(cogs.update_cog.UpdateTask(self))
 
         for command in self.commands:
             data.add_command(command.name, command.help)

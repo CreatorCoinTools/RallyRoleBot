@@ -1,5 +1,6 @@
-from typing import Optional
+from typing import Optional, Dict, List
 from pydantic import BaseModel
+import json
 
 
 class ChannelMapping(BaseModel):
@@ -31,6 +32,11 @@ class PrefixMapping(BaseModel):
 class Command(BaseModel):
     name: str
     description: str
+
+
+class AlertsSettings(BaseModel):
+    guildId: Optional[str] = None
+    settings: Optional[Dict] = None
 
 
 class BotNameMapping(BaseModel):

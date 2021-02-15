@@ -1,19 +1,16 @@
-import json
 import sys
 import traceback
 import threading
 import time
-
+import datetime
 import discord
+import discord.utils
+import json
+
 from discord.ext import commands, tasks
 from discord.utils import get
-
 from constants import *
 
-import cogs.role_cog
-import cogs.rally_cog
-import cogs.defaults_cog
-import cogs.channel_cog
 import aiohttp
 
 import config
@@ -22,12 +19,159 @@ import errors
 import data
 import rally_api
 import validation
-
+import requests
 from utils import pretty_print
 
 main_bot = None
 running_bots = {}
 running_bot_instances = []
+
+
+webhook_message_data = {
+    'buy': {
+        "description": "**{data[username]}** has purchased **{data[amountOfCoin]}** coins of **{coinKind}!**",
+    },
+    'donate': {
+        "description": "**{data[fromUsername]}** has donated **{data[amountOfCoin]}** coins of **{coinKind}!**",
+    },
+    'transfer': {
+        "description": "**{data[fromUsername]}** has transferred **{data[amountOfCoin]}** coins of **{coinKind}!**",
+    },
+    'convert': {
+        "description": "**{data[username]}** has converted **{data[fromAmount]}** coins of **{data[fromCoinKind]}** to **{data[toAmount]}** coins of **{data[toCoinKind]}!**",
+    },
+    'redeem': {
+        "description": "**{data[username]}** has redeemed **{data[amountOfCoin]}** coins of **{coinKind}!**",
+    }
+}
+
+
+default_avatar = ''
+
+
+async def set_default_avatar():
+    global default_avatar
+    async with aiohttp.ClientSession() as session:
+        async with session.get(DEFAULT_BOT_AVATAR_URL) as response:
+            default_avatar = await response.read()
+
+
+async def format_alert_message(event, payload):
+    description = webhook_message_data[event]['description']
+
+    if not payload['data']['showUsername']:
+        payload['data']['username'] = 'someone'
+
+    coin_image_url = rally_api.get_coin_image_url(payload['coinKind'])
+
+    description = description.format(**payload)
+    message = {
+        "embeds": [
+            {
+                "description": description,
+                "color": 0xff0000,
+                "author": {
+                    "name": "Alert!",
+                    "icon_url": coin_image_url
+                },
+                "timestamp": payload['data']['createdDate']
+            }
+        ]
+    }
+    return message
+
+
+async def get_webhook_url(guild_id, channel_name):
+    bot_instance = data.get_bot_instance(guild_id)
+    if not bot_instance:
+        bot_object = main_bot
+    else:
+        bot_object = running_bots[bot_instance[BOT_ID_KEY]]['bot']
+
+    await bot_object.wait_until_ready()
+
+    guild_object = bot_object.get_guild(int(guild_id))
+    if not guild_object:
+        guild_object = await bot_object.fetch_guild(guild_id)
+        if not guild_object:
+            return
+
+    channel_object = discord.utils.get(guild_object.channels, name=channel_name)
+    if not channel_object:
+        return
+
+    webhook = data.get_webhook(guild_id, channel_object.id)
+    if not webhook:
+        try:
+            webhook_object = await channel_object.create_webhook(name='RallyBotAlerts', avatar=default_avatar)
+            data.add_webhook(guild_id, channel_object.id, webhook_object.url, webhook_object.id, webhook_object.token)
+            webhook_url = webhook_object.url
+        except:
+            return
+    else:
+        webhook_url = webhook[WEBHOOK_URI]
+
+    return webhook_url
+
+
+async def process_payload(payload: dict):
+    # add to stats
+    coin_kind = payload['coinKind']
+    coin_stats_day = data.get_coin_stats_day(coin_kind)
+    if not coin_stats_day:
+        coin_stats_day = {
+            COIN_KIND_KEY: coin_kind,
+            PURCHASES_KEY: 0,
+            DONATIONS_KEY: 0,
+            TRANSFERS_KEY: 0,
+            CONVERSIONS_KEY: 0,
+            REDEEMS_KEY: 0
+        }
+
+    event_to_stats_switch = {
+        'buy': PURCHASES_KEY,
+        'donate': DONATIONS_KEY,
+        'transfer': TRANSFERS_KEY,
+        'convert': CONVERSIONS_KEY,
+        'redeem': REDEEMS_KEY,
+    }
+
+    event = payload['event'].lower()
+    coin_stats_day[event_to_stats_switch.get(event)] += 1
+
+    data.add_coin_stats_day(**coin_stats_day)
+
+    # send webhook message
+    alerts_settings = data.get_all_alerts_settings()
+    for settings in alerts_settings:
+        settings_data = json.loads(settings[ALERTS_SETTINGS_KEY])
+        guild_id = int(settings[GUILD_ID_KEY])
+        default_coin = data.get_default_coin(str(guild_id))
+        if not default_coin:
+            continue
+
+        if not settings_data[event]['enabled']:
+            continue
+
+        for instance in settings_data[event]['instances']:
+            if not instance['channel']:
+                continue
+
+            if not instance['settings']['minamount']:
+                instance['settings']['minamount'] = 0.0
+
+            if not instance['settings']['maxamount'] or instance['settings']['maxamount'] == 0:
+                instance['settings']['maxamount'] = sys.maxsize
+
+            coin_amount = payload['data']['amountOfCoin'] if payload['event'] != 'convert' else payload['data']['fromAmount']
+            # check if amount is between limits
+            if float(instance['settings']['minamount']) <= float(coin_amount) <= float(instance['settings']['maxamount']):
+                webhook_url = await get_webhook_url(guild_id, instance['channel'])
+                if not webhook_url:
+                    continue
+
+                message = await format_alert_message(event, payload)
+                requests.post(webhook_url, json=message)
 
 
 async def grant_deny_channel_to_member(channel_mapping, member, balances):
@@ -55,6 +199,7 @@ async def grant_deny_channel_to_member(channel_mapping, member, balances):
     ]
     if len(matched_channels) == 0:
         return
+
     channel_to_assign = matched_channels[0]
     if channel_to_assign is not None:
         if (
@@ -152,9 +297,7 @@ async def update_activity(bot_instance, new_activity_type, new_activity_text):
 
 async def update_avatar(bot_instance, new_avatar=None):
     if new_avatar is None:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(DEFAULT_BOT_AVATAR_URL) as response:
-                new_avatar = await response.read()
+        new_avatar = default_avatar
 
     error = False
     # avatar change
@@ -179,34 +322,115 @@ class UpdateTask(commands.Cog):
         self.bot = bot
         self.update_lock = threading.Lock()
 
+    async def run_old_timers(self):
+        print(f'running old timers')
+        timers = data.get_all_timers()
+        for timer in timers:
+            asyncio.create_task(self.run_timer(timer))
+
+    async def run_timer(self, timer):
+        now = round(time.time())
+
+        if timer['expires'] > now:
+            await asyncio.sleep(int(timer['expires'] - now))
+
+        await self.call_timer_event(timer)
+
+    async def call_timer_event(self, timer):
+        timer = data.get_timer(timer['id'])
+        if not timer:
+            return
+
+        data.delete_timer(timer['id'])
+        self.bot.dispatch(f'{timer["event"]}_timer_over', timer)
+
+    async def create_timer(self, **kwargs):
+        timer_id = data.add_timer(kwargs)
+        kwargs['id'] = timer_id
+        asyncio.create_task(self.run_timer(kwargs))
+
+    @commands.Cog.listener()
+    async def on_daily_stats_timer_over(self, timer):
+        guild_id = timer['guild_id']
+        channel_name = timer['extras']['channel_name']
+        webhook_url = await get_webhook_url(guild_id, channel_name)
+
+        default_coin = data.get_default_coin(int(guild_id))
+        if webhook_url:
+            coin_day_stats = data.get_coin_stats_day(default_coin)
+            total_stats = rally_api.get_coin_summary(default_coin)
+            rewards = rally_api.get_coin_rewards(default_coin)
+            coin_image_url = rally_api.get_coin_image_url(default_coin)
+
+            message = {
+              "embeds": [
+                {
+                  "description": f"```xl\n- Total # of coins: {total_stats['totalCoins']}\n\n"
+                                 f"- Total # of supporters: {total_stats['totalSupporters']}\n\n"
+                                 f"- Total Support Volume: {total_stats['totalSupportVolume']} USD\n\n\n"
+                                 f"- Today`s # of purchases: {coin_day_stats[PURCHASES_KEY]}\n\n"
+                                 f"- Today`s # of donations: {coin_day_stats[DONATIONS_KEY]}\n\n"
+                                 f"- Today`s # of transfers: {coin_day_stats[TRANSFERS_KEY]}\n\n"
+                                 f"- Today`s # of conversions: {coin_day_stats[CONVERSIONS_KEY]}\n\n"
+                                 f"- Today`s # of redeems: {coin_day_stats[REDEEMS_KEY]}\n\n"
+                                 f"- Today`s # of rewards earned: {rewards['last24HourEarned']}\n```",
+                  "color": 0xff0000,
+                  "author": {
+                    "name": f"{default_coin} Daily Stats",
+                    "icon_url": coin_image_url
+                  },
+                  "timestamp": datetime.datetime.now().isoformat()
+                }
+              ]
+            }
+
+            requests.post(webhook_url, json=message)
+
+        # 0 out week stats if day is money
+        timezone = int(timer['extras']['timezone'])
+        check = 0 if timezone >= 0 else 6
+        if datetime.datetime.utcnow().weekday() == check:
+            coin_stats_week = {
+                COIN_KIND_KEY: default_coin,
+                PURCHASES_KEY: 0,
+                DONATIONS_KEY: 0,
+                TRANSFERS_KEY: 0,
+                CONVERSIONS_KEY: 0,
+                REDEEMS_KEY: 0
+            }
+            data.add_coin_stats_week(coin_stats_week)
+
+        # start timer again
+        if timer['bot_id'] in running_bots:
+            bot_object = running_bots[timer['bot_id']]['bot']
+        else:
+            bot_object = main_bot
+
+        if not timer['extras']['timezone']:
+            timer['extras']['timezone'] = 0
+
+        dt = datetime.datetime.utcnow() + datetime.timedelta(hours=int(timer['extras']['timezone']))
+        time_midnight = time.time() + (((24 - dt.hour - 1) * 60 * 60) + ((60 - dt.minute - 1) * 60) + (60 - dt.second))
+
+        # if the timezone is whacky and time_midnight ends up coming up before current time,
+        # just add 24h to current time and set that as time_midnight
+        if time_midnight < round(time.time()):
+            time_midnight = round(time.time()) + (24 * 3600)  # 24h
+
+        await self.create_timer(
+            guild_id=guild_id,
+            expires=time_midnight,
+            event='daily_stats',
+            extras=timer['extras'],
+            bot_id=bot_object.user.id
+        )
+
     @staticmethod
     async def start_bot_instance(bot_instance):
-        config.parse_args()
-        intents = discord.Intents.default()
-        intents.guilds = True
-        intents.members = True
-        default_prefix = config.CONFIG.command_prefix
-
-        def prefix(bot, ctx):
-            try:
-                guildId = ctx.guild.id
-                return data.get_prefix(guildId) or default_prefix
-            except:
-                return default_prefix
-
-        bot = commands.Bot(command_prefix=prefix, intents=intents)
-        bot.add_cog(cogs.role_cog.RoleCommands(bot))
-        bot.add_cog(cogs.channel_cog.ChannelCommands(bot))
-        bot.add_cog(cogs.rally_cog.RallyCommands(bot))
-        bot.add_cog(cogs.defaults_cog.DefaultsCommands(bot))
-        bot.add_cog(cogs.update_cog.UpdateTask(bot))
-
-        for command in bot.commands:
-            data.add_command(command.name, command.help)
+        from main import bot
 
         try:
             await bot.start(bot_instance)
-
         finally:
             if not bot.is_closed():
                 await bot.close()
@@ -248,6 +472,11 @@ class UpdateTask(commands.Cog):
 
         print("We have logged in as {0.user}".format(self.bot))
         self.update.start()
+
+        if not default_avatar:
+            await set_default_avatar()
+
+        await self.run_old_timers()
 
     @errors.standard_error_handler
     async def cog_command_error(self, ctx, error):

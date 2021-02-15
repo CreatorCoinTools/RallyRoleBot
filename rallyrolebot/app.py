@@ -9,10 +9,12 @@ from api import (
     prefix_mappings,
     coin_mappings,
     commands,
+    alerts_settings_mappings,
     bot_avatar_mappings,
     bot_instance_mappings,
     bot_name_mappings,
-    bot_activity_mappings
+    bot_activity_mappings,
+    webhooks_mapping
 )
 import config
 
@@ -43,6 +45,8 @@ app.include_router(bot_instance_mappings.router)
 app.include_router(bot_name_mappings.router)
 app.include_router(bot_avatar_mappings.router)
 app.include_router(bot_activity_mappings.router)
+app.include_router(alerts_settings_mappings.router)
+app.include_router(webhooks_mapping.router)
 
 
 @app.get("/")

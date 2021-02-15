@@ -51,11 +51,31 @@ CONFIG_NAME_KEY = "configName"
 PURCHASE_MESSAGE_KEY = "purchaseMessage"
 DONATE_MESSAGE_KEY = "donateMessage"
 
+ALERT_SETTINGS_TABLE = 'alerts_settings_table'
+EVENTS_KEY = 'events'
+ALERTS_SETTINGS_KEY = 'settings'
+
+WEBHOOKS_TABLE = 'webhook_table'
+WEBHOOK_URI = 'webhook_uri'
+WEBHOOK_CHANNEL_ID = 'webhook_channel'
+WEBHOOK_ID = 'webhook_id'
+WEBHOOK_TOKEN = 'webhook_token'
+
+TIMERS_TABLE = 'timers_table'
+
+COIN_STATS_DAY_TABLE = 'coinStatsDayTable'
+COIN_STATS_WEEK_TABLE = 'coinStatsWeekTable'
+PURCHASES_KEY = 'purchases'
+DONATIONS_KEY = 'donations'
+TRANSFERS_KEY = 'transfers'
+CONVERSIONS_KEY = 'conversions'
+REDEEMS_KEY = 'redeems'
+
+
 """
  Constants useful for  rally_api module
 """
 
-COIN_KIND_KEY = "coinKind"
 COIN_BALANCE_KEY = "coinBalance"
 
 BASE_URL = "https://api.rally.io/v1"

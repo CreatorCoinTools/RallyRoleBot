@@ -1,8 +1,9 @@
 import json
 import sys
+import time
 import traceback
 import asyncio
-
+import datetime
 import discord
 from discord.ext import commands, tasks
 from discord.utils import get
@@ -36,6 +37,103 @@ class DefaultsCommands(commands.Cog):
         traceback.print_exception(
             type(error), error, error.__traceback__, file=sys.stderr
         )
+
+    async def update_setting(self, ctx, alert, channel, value, setting):
+        if not alert or not channel or not value:
+            return await pretty_print(ctx, "Missing <alert>, <channel> or <value>", title='Error', color=ERROR_COLOR)
+
+        channel_object = None
+        if type(channel) == str:
+            channel_object = discord.utils.get(ctx.guild.channels, name=channel)
+        elif ctx.message.channel_mentions:
+            channel_object = ctx.message.channel_mentions[0]
+
+        if not channel_object:
+            return await pretty_print(ctx, "Invalid <channel>", title='Error', color=ERROR_COLOR)
+
+        settings = data.get_alerts_settings(ctx.guild.id)
+        if not settings:
+            return await pretty_print(ctx, "Alert settings have not been configured on the dashboard", title='Error', color=ERROR_COLOR)
+
+        settings = settings[ALERTS_SETTINGS_KEY]
+
+        if alert not in settings:
+            return await pretty_print(ctx, "Invalid <Alert>", title='Error', color=ERROR_COLOR)
+
+        instance = [i for (i, instance) in enumerate(settings[alert]['instances']) if
+                    instance['channel'] == channel_object.name]
+        if not instance:
+            return await pretty_print(ctx, "Couldn't find an entry with that channel name", title='Error', color=ERROR_COLOR)
+
+        settings[alert]['instances'][instance[0]]['settings'][setting] = value
+        data.set_alerts_settings(ctx.guild.id, json.dumps(settings))
+
+        return await pretty_print(ctx, "Alert settings have been updated", title='Success', color=SUCCESS_COLOR)
+
+    @commands.command(
+        name='setmin',
+        help='<alert> <channel> <value> - Set the minimum amount for an alert'
+    )
+    async def setmin(self, ctx, alert=None, channel=None, value=None):
+        return await self.update_setting(ctx, alert, channel, value, 'minamount')
+
+    @commands.command(
+        name='setmax',
+        help='<alert> <channel> <value> - Set the minimum amount for an alert'
+    )
+    async def setmax(self, ctx, alert=None, channel=None, value=None):
+        return await self.update_setting(ctx, alert, channel, value, 'maxamount')
+
+    @commands.command(
+        name='settimezone',
+        help='<channel> <value (-12 - +12)> - Set timezone setting for daily stats message'
+    )
+    async def settimezone(self, ctx, channel=None, value=None):
+        return await self.update_setting(ctx, 'daily_stats', channel, value, 'timezone')
+
+    @commands.command(
+        name='allcoinstats',
+        help='<day/week> - list the following stats in the coin alerts channel based on the time given'
+    )
+    async def allcoinstats(self, ctx, timeframe=''):
+        timeframe = timeframe.lower()
+        if timeframe not in ['day', 'week']:
+            return await pretty_print(
+                ctx, "Invalid timeframe, please type `day` or `week`", title="Error", color=ERROR_COLOR
+            )
+
+        default_coin = data.get_default_coin(ctx.guild.id)
+        if not default_coin:
+            return await pretty_print(
+                ctx, "A default coin has not been set. An admin can set the default coin by typing $setdefaultcoin . Type $help for more information.", title="Error", color=ERROR_COLOR
+            )
+
+        coin_day_stats = data.get_coin_stats_day(default_coin)
+        total_stats = rally_api.get_coin_summary(default_coin)
+        rewards = rally_api.get_coin_rewards(default_coin)
+        coin_image_url = rally_api.get_coin_image_url(default_coin)
+
+        extra_str = 'Today' if timeframe == 'day' else 'This Week'
+        reward_str = 'last24HourEarned' if timeframe == 'day' else 'weeklyAccumulatedReward'
+        message = {
+            "description": f"```xl\n"
+                           f"- {extra_str}`s # of purchases: {coin_day_stats[PURCHASES_KEY]}\n\n"
+                           f"- {extra_str}`s # of donations: {coin_day_stats[DONATIONS_KEY]}\n\n"
+                           f"- {extra_str}`s # of transfers: {coin_day_stats[TRANSFERS_KEY]}\n\n"
+                           f"- {extra_str}`s # of conversions: {coin_day_stats[CONVERSIONS_KEY]}\n\n"
+                           f"- {extra_str}`s # of redeems: {coin_day_stats[REDEEMS_KEY]}\n\n"
+                           f"- {extra_str}`s # of rewards earned: {rewards[reward_str]}\n"
+                           f"```",
+            "color": 0xff0000,
+            "author": {
+                "name": f"{default_coin} Stats {extra_str}",
+                "icon_url": coin_image_url
+            },
+            "timestamp": datetime.datetime.now().isoformat()
+        }
+
+        embed = discord.Embed.from_dict(message)
+        return await ctx.send(embed=embed)
 
     @commands.command(
         name="set_default_coin",

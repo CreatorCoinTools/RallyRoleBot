@@ -57,6 +57,36 @@ def get_current_price(coin_name):
     return result.json()
 
 
+def get_coin_image_url(coin):
+    url = BASE_URL + "/creator_coins/"
+    result = requests.get(url)
+    for data in result.json():
+        if data['coinSymbol'] == coin:
+            return data['coinImagePath']
+
+    return ''
+
+
+def get_coin_summary(coin):
+    url = BASE_URL + "/creator_coins/" + coin + '/summary'
+    result = requests.get(url)
+    if result.status_code != 200:
+        returnReqError(url, result)
+        return False
+
+    return result.json()
+
+
+def get_coin_rewards(coin):
+    url = BASE_URL + "/creator_coins/" + coin + '/rewards'
+    result = requests.get(url)
+    if result.status_code != 200:
+        returnReqError(url, result)
+        return False
+
+    return result.json()
+
+
 """
     TODO: Add 24h and 30d price data
 """
