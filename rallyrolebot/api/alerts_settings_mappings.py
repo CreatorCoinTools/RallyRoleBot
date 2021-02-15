@@ -54,11 +54,13 @@ async def add_mappings(mapping: AlertsSettings, guildId: str):
                 instance['settings']['timezone'] = '0'
 
             try:
+                # get time relative to user timezone
                 dt = datetime.datetime.utcnow() + datetime.timedelta(hours=int(instance['settings']['timezone']))
             except:
                 continue
 
-            time_midnight = time.time() + 5
+            # get time until midnight
+            time_midnight = time.time() + (((24 - dt.hour - 1) * 60 * 60) + ((60 - dt.minute - 1) * 60) + (60 - dt.second))
 
             await bot_object.get_cog("UpdateTask").create_timer(
                 guild_id=guildId,

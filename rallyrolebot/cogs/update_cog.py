@@ -6,6 +6,7 @@ import datetime
 import discord
 import discord.utils
 import json
+import re
 
 from discord.ext import commands, tasks
 from discord.utils import get
@@ -56,22 +57,52 @@ async def set_default_avatar():
             default_avatar = await response.read()
 
 
-async def format_alert_message(event, payload):
-    description = webhook_message_data[event]['description']
+async def format_alert_message(event, payload, instance):
+    if instance['settings']['customMessage']:
+        description = instance['settings']['customMessage']
+    else:
+        description = webhook_message_data[event]['description']
 
-    if not payload['data']['showUsername']:
+    if instance['settings']['customTitle']:
+        title = instance['settings']['customTitle']
+    else:
+        title = 'Alert!'
+
+    if instance['settings']['customColour']:
+        colour = instance['settings']['customColour']
+    else:
+        colour = '#ff0000'
+
+    colour = int(colour.replace('#', '0x'), 16)
+
+    if 'showUsername' not in payload['data'] or not payload['data']['showUsername']:
         payload['data']['username'] = 'someone'
 
     coin_image_url = rally_api.get_coin_image_url(payload['coinKind'])
 
-    description = description.format(**payload)
+    payload.update(payload['data'])
+
+    if event == 'convert':
+        payload['valueInUSD'] = payload['valueInUSCents'] // 100
+    elif event == 'redeem':
+        payload['estimatedAmountInUSD'] = payload['estimatedAmountInUSCents'] // 100
+    else:
+        payload['costInUSD'] = payload['costInUSCents'] // 100
+
+    variables = re.findall(r'({.*})', description)
+    for var in variables:
+        try:
+            description = description.replace(var, var.format(**payload))
+        except:
+            continue
+
     message = {
         "embeds": [
             {
                 "description": description,
-                "color": 0xff0000,
+                "color": colour,
                 "author": {
-                    "name": "Alert!",
+                    "name": title,
                     "icon_url": coin_image_url
                 },
                 "timestamp": payload['data']['createdDate']
@@ -157,10 +188,10 @@ async def process_payload(payload: dict):
             if not instance['channel']:
                 continue
 
-            if not instance['settings']['minamount']:
+            if 'minamount' not in instance['settings'] or not instance['settings']['minamount']:
                 instance['settings']['minamount'] = 0.0
 
-            if not instance['settings']['maxamount'] or instance['settings']['maxamount'] == 0:
+            if 'maxamount' not in instance['settings'] or not instance['settings']['maxamount'] or instance['settings']['maxamount'] == 0:
                 instance['settings']['maxamount'] = sys.maxsize
 
             coin_amount = payload['data']['amountOfCoin'] if payload['event'] != 'convert' else payload['data']['fromAmount']
@@ -170,7 +201,7 @@ async def process_payload(payload: dict):
                 if not webhook_url:
                     continue
 
-                message = await format_alert_message(event, payload)
+                message = await format_alert_message(event, payload, instance)
                 requests.post(webhook_url, json=message)
 
 
