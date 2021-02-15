@@ -15,27 +15,28 @@ CONFIG_TABLE = "config"
 USERS_TABLE = "users"
 USERS_TOKEN_TABLE = "users_token"
 COMMANDS_TABLE = "commands"
+COIN_PRICE_TABLE = "coin_price"
 
 
 GUILD_ID_KEY = "guildId"
-COIN_KIND_KEY = "coinKind"
+PRICE_KEY = "priceInUSD"
 REQUIRED_BALANCE_KEY = "requiredBalance"
 ROLE_NAME_KEY = "roleName"
 CHANNEL_NAME_KEY = "channel"
 DISCORD_ID_KEY = "discordId"
 RALLY_ID_KEY = "rallyId"
 
-BOT_TOKEN_KEY = 'botToken'
-BOT_INSTANCES_KEY = 'botInstances'
-OWNER_ID_KEY = 'ownerId'
-TIME_ADDED_KEY = 'timeAdded'
+BOT_TOKEN_KEY = "botToken"
+BOT_INSTANCES_KEY = "botInstances"
+OWNER_ID_KEY = "ownerId"
+TIME_ADDED_KEY = "timeAdded"
 BOT_NAME_KEY = "botName"
 BOT_AVATAR_KEY = "botAvatar"
-BOT_ID_KEY = 'botId'
-AVATAR_TIMEOUT_KEY = 'avatarTimeout'
-NAME_TIMEOUT_KEY = 'nameTimeout'
-BOT_ACTIVITY_TEXT_KEY = 'botActivityText'
-BOT_ACTIVITY_TYPE_KEY = 'botActivityType'
+BOT_ID_KEY = "botId"
+AVATAR_TIMEOUT_KEY = "avatarTimeout"
+NAME_TIMEOUT_KEY = "nameTimeout"
+BOT_ACTIVITY_TEXT_KEY = "botActivityText"
+BOT_ACTIVITY_TYPE_KEY = "botActivityType"
 
 USERNAME_KEY = "username"
 DISCRIMINATOR_KEY = "discriminator"
@@ -114,6 +115,7 @@ API_TAGS_METADATA = [
     {"name": "commands", "description": "Get list of all available bot commands"},
     {"name": "prefix", "description": "Command prefix in guild"},
     {"name": "roles", "description": "Coin role mappings"},
+    {"name": "coins", "description": "Coin price data"},
     {"name": "bot_instance", "description": "Bot instances"},
     {"name": "bot_avatar", "description": "Configure bot avatar"},
     {"name": "bot_name", "description": "Configure bot name"},

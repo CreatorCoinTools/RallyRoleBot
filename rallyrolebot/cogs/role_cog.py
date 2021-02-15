@@ -86,11 +86,13 @@ class RoleCommands(commands.Cog):
     @commands.command(name="get_role_mappings", help="Get role mappings")
     @validation.owner_or_permissions(administrator=True)
     async def get_role_mappings(self, ctx):
-        await ctx.send(
-            json.dumps(
-                [
-                    json.dumps(mapping)
-                    for mapping in data.get_role_mappings(ctx.guild.id)
-                ]
-            )
+        mappingsStr = "```Role   Coin   Amount\n\n"
+        for mapping in data.get_role_mappings(ctx.guild.id):
+            mappingsStr += f"{mapping[ROLE_NAME_KEY]}   {mapping[COIN_KIND_KEY]}   {mapping[REQUIRED_BALANCE_KEY]}\n"
+        mappingsStr += "```"
+        await pretty_print(
+            ctx,
+            mappingsStr,
+            title=f"Role mappings",
+            color=GREEN_COLOR,
         )

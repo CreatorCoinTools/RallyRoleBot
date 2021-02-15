@@ -1,4 +1,5 @@
 from typing import Optional, Dict, List
+from datetime import datetime
 from pydantic import BaseModel
 import json
 
@@ -37,6 +38,19 @@ class Command(BaseModel):
 class AlertsSettings(BaseModel):
     guildId: Optional[str] = None
     settings: Optional[Dict] = None
+
+      
+class CoinPrice(BaseModel):
+    coinKind: str
+    priceInUSD: str
+    usd_24h_change: Optional[str] = None
+
+
+class CoinPrices(BaseModel):
+    id: Optional[int] = None
+    timeCreated: datetime
+    coinKind: str
+    priceInUSD: str
 
 
 class BotNameMapping(BaseModel):

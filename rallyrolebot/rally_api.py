@@ -77,6 +77,16 @@ def get_coin_summary(coin):
     return result.json()
 
 
+def get_creator_coins():
+    url = BASE_URL + "/creator_coins"
+    result = requests.get(url)
+    if result.status_code != 200:
+        returnReqError(url, result)
+        return False
+
+    return result.json()
+
+
 def get_coin_rewards(coin):
     url = BASE_URL + "/creator_coins/" + coin + '/rewards'
     result = requests.get(url)
