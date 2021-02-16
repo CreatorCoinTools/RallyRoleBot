@@ -529,12 +529,6 @@ def get_alerts_settings(db, guildId):
 
 
 @connect_db
-def get_all_alerts_settings(db):
-    table = db[ALERT_SETTINGS_TABLE]
-    return [s for s in table.all()]
-
-
-@connect_db
 def add_webhook(db, guildId, channelId, webhook_uri, webhook_id, webhook_token):
     table = db[WEBHOOKS_TABLE]
     table.upsert(
@@ -559,12 +553,6 @@ def get_webhook(db, guildId, channelId):
 def delete_webhook(db, uri):
     table = db[WEBHOOKS_TABLE]
     table.delete(webhook_uri=uri)
-
-
-@connect_db
-def get_all_webhooks(db):
-    table = db[WEBHOOKS_TABLE]
-    return [t for t in table.all()]
 
 
 @connect_db
@@ -605,13 +593,6 @@ def add_event(db, event, coin):
         COIN_KIND_KEY: coin,
         TIME_ADDED_KEY: time.time()
     })
-
-
-@connect_db
-def get_events(db, event, coin):
-    table = db[EVENTS_TABLE]
-    rows = table.find(event=event, coinKind=coin)
-    return [r for r in rows]
 
 
 @connect_db

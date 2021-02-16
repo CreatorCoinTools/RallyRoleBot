@@ -53,7 +53,6 @@ PURCHASE_MESSAGE_KEY = "purchaseMessage"
 DONATE_MESSAGE_KEY = "donateMessage"
 
 ALERT_SETTINGS_TABLE = 'alerts_settings_table'
-EVENTS_KEY = 'events'
 ALERTS_SETTINGS_KEY = 'settings'
 
 WEBHOOKS_TABLE = 'webhook_table'
