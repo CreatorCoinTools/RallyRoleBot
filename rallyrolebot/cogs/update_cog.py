@@ -151,14 +151,15 @@ async def process_payload(payload: dict, failed=False):
     event = payload['event'].lower()
     data.add_event(event, coin_kind)
 
-    # send webhook message
-    alerts_settings = data.get_all_alerts_settings()
-    for settings in alerts_settings:
-        settings_data = json.loads(settings[ALERTS_SETTINGS_KEY])
-        guild_id = int(settings[GUILD_ID_KEY])
-        default_coin = data.get_default_coin(str(guild_id))
-        if not default_coin:
+    # find guilds that have coin_kind as default coin
+    guilds = data.get_guilds_by_coin(coin_kind)
+    for guild in guilds:
+        guild_id = guild[GUILD_ID_KEY]
+        alerts_settings = data.get_alerts_settings(guild_id)
+        if not alerts_settings:
             continue
+
+        settings_data = alerts_settings[ALERTS_SETTINGS_KEY]
 
         if not settings_data[event]['enabled']:
             continue

@@ -635,3 +635,9 @@ def delete_week_old(db):
     week_old = table.find(timeAdded={'lt': ago_1week})
     for event in week_old:
         table.delete(id=event['id'])
+
+
+@connect_db
+def get_guilds_by_coin(db, coin):
+    table = db[DEFAULT_COIN_TABLE]
+    return [r for r in table.find(coinKind=coin)]
