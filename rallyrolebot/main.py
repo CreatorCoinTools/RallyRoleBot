@@ -39,6 +39,7 @@ class RallyRoleBot(commands.Bot):
             data.add_command(command.name, command.help)
 
     def run(self, *args, **kwargs):
+        """Run funciton, most of this is copied from the discord command, added needed modifications."""
         loop = asyncio.get_event_loop()
 
         async def _stop(*a):

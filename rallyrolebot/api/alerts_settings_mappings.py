@@ -43,8 +43,13 @@ async def add_mappings(mapping: AlertsSettings, guildId: str):
 
     # add timer if daily stats is enabled
     if output_data[ALERTS_SETTINGS_KEY]['daily_stats']['enabled'] and output_data[ALERTS_SETTINGS_KEY]['daily_stats']['instances']:
+        # delete old timers
         data.delete_timers(str(guildId))
+
+        # loop through each instance of the daily_stats
         for i, instance in enumerate(output_data[ALERTS_SETTINGS_KEY]['daily_stats']['instances']):
+
+            # get bot instance, if it isn't set, assume the bot being used is the main one
             bot_instance = data.get_bot_instance(guildId)
             if not bot_instance:
                 bot_object = update_cog.main_bot
@@ -63,9 +68,11 @@ async def add_mappings(mapping: AlertsSettings, guildId: str):
                 if not has_permission:
                     return {'error': "Bot is missing Manage Webhooks permissions"}
             except:
+                # just in case no guild can be gotten
                 return {'error': "Invalid Guild"}
 
-            if not instance['settings']['timezone']:
+            # set timezone to a default 0 if needed
+            if 'timezone' not in instance['settings'] or not instance['settings']['timezone']:
                 instance['settings']['timezone'] = '0'
 
             try:
@@ -77,6 +84,7 @@ async def add_mappings(mapping: AlertsSettings, guildId: str):
             # get time until midnight
             time_midnight = time.time() + (((24 - dt.hour - 1) * 60 * 60) + ((60 - dt.minute - 1) * 60) + (60 - dt.second))
 
+            # start new timer for instance
             await bot_object.get_cog("UpdateTask").create_timer(
                 guild_id=guildId,
                 expires=time_midnight,

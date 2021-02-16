@@ -5,9 +5,9 @@ import time
 import datetime
 import discord
 import discord.utils
-import json
 import re
 
+from typing import Optional
 from discord.ext import commands, tasks
 from discord.utils import get
 from constants import *
@@ -27,7 +27,7 @@ main_bot = None
 running_bots = {}
 running_bot_instances = []
 
-
+# default descriptions for every event
 webhook_message_data = {
     'buy': {
         "description": "**{data[username]}** has purchased **{data[amountOfCoin]}** coins of **{coinKind}!**",
@@ -46,10 +46,10 @@ webhook_message_data = {
     }
 }
 
-
 default_avatar = ''
 
 
+# sets global default avatar value for use in webhooks
 async def set_default_avatar():
     global default_avatar
     async with aiohttp.ClientSession() as session:
@@ -57,31 +57,33 @@ async def set_default_avatar():
             default_avatar = await response.read()
 
 
-async def format_alert_message(event, payload, instance):
-    if instance['settings']['customMessage']:
-        description = instance['settings']['customMessage']
-    else:
-        description = webhook_message_data[event]['description']
+async def format_alert_message(event: str, payload: dict, instance: dict) -> dict:
+    """
+    Format alert message for sending to a webhook
 
-    if instance['settings']['customTitle']:
-        title = instance['settings']['customTitle']
-    else:
-        title = 'Alert!'
+    @param event: event type [buy, donate, ...]
+    @param payload: payload received
+    @param instance: alert instance defined in dashboard
+    @return: dict formatted with data for sending to a webhook
+    """
+    # set values to provided one or to default one
+    description = instance['settings']['customMessage'] if instance['settings']['customMessage'] else webhook_message_data[event]['description']
+    title = instance['settings']['customTitle'] if instance['settings']['customTitle'] else 'Alert!'
+    colour = instance['settings']['customColour'] if instance['settings']['customColour'] else '#ff0000'
 
-    if instance['settings']['customColour']:
-        colour = instance['settings']['customColour']
-    else:
-        colour = '#ff0000'
-
+    # convert colour to int
     colour = int(colour.replace('#', '0x'), 16)
 
+    # if showUsername is false set username to 'someone'
     if 'showUsername' not in payload['data'] or not payload['data']['showUsername']:
         payload['data']['username'] = 'someone'
 
     coin_image_url = rally_api.get_coin_image_url(payload['coinKind'])
 
+    # move values from data to the root of payload
     payload.update(payload['data'])
 
+    # add values for extra variables
     if event == 'convert':
         payload['valueInUSD'] = payload['valueInUSCents'] // 100
     elif event == 'redeem':
@@ -89,6 +91,7 @@ async def format_alert_message(event, payload, instance):
     else:
         payload['costInUSD'] = payload['costInUSCents'] // 100
 
+    # format provided message variable by variable, if variable doesnt exist in payload, continue on
     variables = re.findall(r'({\w+})', description)
     for var in variables:
         try:
@@ -96,6 +99,7 @@ async def format_alert_message(event, payload, instance):
         except:
             continue
 
+    # message in proper format for sending to webhook
     message = {
         "embeds": [
             {
@@ -112,27 +116,37 @@ async def format_alert_message(event, payload, instance):
     return message
 
 
-async def get_webhook_url(guild_id, channel_name):
-    bot_instance = data.get_bot_instance(guild_id)
-    if not bot_instance:
-        bot_object = main_bot
-    else:
-        bot_object = running_bots[bot_instance[BOT_ID_KEY]]['bot']
+async def get_webhook_url(guild_id: str, channel_name: str) -> Optional[str]:
+    """
+    Gets or creates webhook url.
 
+    @param guild_id: guild id of webhook
+    @param channel_name: channel name of webhook
+    @return: webhook url or None if error occurred
+    """
+    # get bot object
+    bot_instance = data.get_bot_instance(guild_id)
+    bot_object = main_bot if not bot_instance else running_bots[bot_instance[BOT_ID_KEY]]['bot']
+
+    # wait until bot is ready, just in case
     await bot_object.wait_until_ready()
 
+    # get guild object, fetch if needed, if bot cant access guild, return
     guild_object = bot_object.get_guild(int(guild_id))
     if not guild_object:
         guild_object = await bot_object.fetch_guild(guild_id)
         if not guild_object:
             return
 
+    # get channel
     channel_object = discord.utils.get(guild_object.channels, name=channel_name)
     if not channel_object:
         return
 
+    # get webhook
     webhook = data.get_webhook(guild_id, channel_object.id)
     if not webhook:
+        # if webhook doesnt exist, create new one and add it to the webhooks database
         try:
             webhook_object = await channel_object.create_webhook(name='RallyBotAlerts', avatar=default_avatar)
             data.add_webhook(guild_id, channel_object.id, webhook_object.url, webhook_object.id, webhook_object.token)
@@ -145,46 +159,63 @@ async def get_webhook_url(guild_id, channel_name):
     return webhook_url
 
 
-async def process_payload(payload: dict, failed=False):
+async def process_payload(payload: dict, failed: bool = False) -> None:
+    """
+    Process payload received by webhook endpoint.
+
+    @param payload: received payload
+    @param failed: True if failed to send message to webhook, False on first attempt
+    @return: None
+    """
     # add to stats
     coin_kind = payload['coinKind']
     event = payload['event'].lower()
     data.add_event(event, coin_kind)
 
-    # find guilds that have coin_kind as default coin
+    # find guilds that have coin_kind as default coin and loop through them
     guilds = data.get_guilds_by_coin(coin_kind)
     for guild in guilds:
         guild_id = guild[GUILD_ID_KEY]
+        # get alert settings
         alerts_settings = data.get_alerts_settings(guild_id)
         if not alerts_settings:
             continue
 
         settings_data = alerts_settings[ALERTS_SETTINGS_KEY]
 
+        # if event isn't enabled, continue
         if not settings_data[event]['enabled']:
             continue
 
+        # go through each instance
         for instance in settings_data[event]['instances']:
+            # if channel is empty, continue
             if not instance['channel']:
                 continue
 
+            # set default value for minamount if needed
             if 'minamount' not in instance['settings'] or not instance['settings']['minamount']:
                 instance['settings']['minamount'] = 0.0
 
+            # set default value for maxamount if needed
             if 'maxamount' not in instance['settings'] or not instance['settings']['maxamount'] or instance['settings']['maxamount'] == 0:
                 instance['settings']['maxamount'] = sys.maxsize
 
+            # get coin amount from variable according to event (convert event is special)
             coin_amount = payload['data']['amountOfCoin'] if payload['event'] != 'convert' else payload['data']['fromAmount']
-            # check if amount is between limits
+
+            # check if amount is between min and max limits
             if float(instance['settings']['minamount']) <= float(coin_amount) <= float(instance['settings']['maxamount']):
+                # get webhooks, return if cant get one
                 webhook_url = await get_webhook_url(guild_id, instance['channel'])
                 if not webhook_url:
                     continue
 
+                # get message for event and send it
                 message = await format_alert_message(event, payload, instance)
                 request = requests.post(webhook_url, json=message)
 
-                # request failed, delete db entry and try again, if it fails a second time dont try again
+                # request failed, delete webhook db entry and try again, if it fails a second time dont try again
                 if request.status_code not in [200, 204] and not failed:
                     data.delete_webhook(webhook_url)
                     return await process_payload(payload, True)
@@ -219,10 +250,10 @@ async def grant_deny_channel_to_member(channel_mapping, member, balances):
     channel_to_assign = matched_channels[0]
     if channel_to_assign is not None:
         if (
-            rally_api.find_balance_of_coin(
-                channel_mapping[data.COIN_KIND_KEY], balances
-            )
-            >= channel_mapping[data.REQUIRED_BALANCE_KEY]
+                rally_api.find_balance_of_coin(
+                    channel_mapping[data.COIN_KIND_KEY], balances
+                )
+                >= channel_mapping[data.REQUIRED_BALANCE_KEY]
         ):
             perms = channel_to_assign.overwrites_for(member)
             perms.send_messages = True
@@ -260,8 +291,8 @@ async def grant_deny_role_to_member(role_mapping, member, balances):
         return
     role_to_assign = get(member.guild.roles, name=role_mapping[data.ROLE_NAME_KEY])
     if (
-        rally_api.find_balance_of_coin(role_mapping[data.COIN_KIND_KEY], balances)
-        >= role_mapping[data.REQUIRED_BALANCE_KEY]
+            rally_api.find_balance_of_coin(role_mapping[data.COIN_KIND_KEY], balances)
+            >= role_mapping[data.REQUIRED_BALANCE_KEY]
     ):
         if role_to_assign is not None:
             await member.add_roles(role_to_assign)
@@ -279,39 +310,54 @@ async def force_update(bot, ctx):
     await bot.get_cog("UpdateTask").force_update(ctx)
 
 
-async def update_activity(bot_instance, new_activity_type, new_activity_text):
-    error = False
-    if new_activity_type and new_activity_text:
-        if new_activity_type == 'playing':
-            activity_type = discord.ActivityType.playing
-        elif new_activity_type == 'listening':
-            activity_type = discord.ActivityType.listening
-        elif new_activity_type == 'competing':
-            activity_type = discord.ActivityType.competing
-        elif new_activity_type == 'watching':
-            activity_type = discord.ActivityType.watching
-        else:
-            error = True
-            return error
+async def update_activity(bot_instance: dict, activity_type_str: str, activity_text: str) -> bool:
+    """
+    Updates bot activity on the bot instance and in the database
+
+    @param bot_instance: bot instance entry in the database
+    @param activity_type_str: string of activity type to be converted into discord activity object
+    @param activity_text: text for activity
+
+    @return: True if error occurred, False if everything changed properly
+    """
+    if activity_type_str and activity_text:
+        # get proper object for activity type
+        activity_type_switch = {
+            'playing': discord.ActivityType.playing,
+            'listening': discord.ActivityType.listening,
+            'competing': discord.ActivityType.competing,
+            'watching': discord.ActivityType.watching
+        }
+        activity_type = activity_type_switch.get(activity_type_str, None)
+        if not activity_type:
+            return True
 
         current_activity = running_bots[bot_instance[BOT_ID_KEY]]['activity']
         bot_object = running_bots[bot_instance[BOT_ID_KEY]]['bot']
 
         try:
-            if not current_activity or (current_activity and current_activity.type != new_activity_text) or \
-                    (current_activity and repr(current_activity.name) != repr(new_activity_text)):
-                # check that current_activity isnt duplicate of new activity
-                new_activity = discord.Activity(type=activity_type, name=new_activity_text)
+            # check that current_activity isn't duplicate of new activity
+            if not current_activity or (current_activity and current_activity.type != activity_text) or \
+                    (current_activity and repr(current_activity.name) != repr(activity_text)):
+                # update all the needed stuff
+                new_activity = discord.Activity(type=activity_type, name=activity_text)
                 running_bots[bot_instance[BOT_ID_KEY]]['activity'] = new_activity
                 await bot_object.change_presence(status=discord.Status.online, activity=new_activity)
-                data.set_activity(bot_instance[GUILD_ID_KEY], new_activity_type, new_activity_text)
+                data.set_activity(bot_instance[GUILD_ID_KEY], activity_type_str, activity_text)
         except:
-            error = True
+            return True
+        
+    return False
 
-    return error
 
+async def update_avatar(bot_instance: dict, new_avatar: bytes = None) -> bool:
+    """
+    Update the avatar of a bot instance.
 
-async def update_avatar(bot_instance, new_avatar=None):
+    @param bot_instance: dict of bot instance db entry
+    @param new_avatar: new avatar in bytes form
+    @return: True if error occurred, otherwise False
+    """
     if new_avatar is None:
         new_avatar = default_avatar
 
@@ -327,13 +373,18 @@ async def update_avatar(bot_instance, new_avatar=None):
         data.set_avatar_timout(bot_instance[GUILD_ID_KEY], timout)
         bot_instance[AVATAR_TIMEOUT_KEY] = timout
     except Exception as e:
-        print(e)
         error = True
 
     return error
 
 
-def get_day_stats(coin):
+def get_day_stats(coin: str) -> dict:
+    """
+    Return dict of stats of events in the past 24h
+
+    @param coin: con symbol e.g. "STANZ"
+    @return: stats dict
+    """
     return {
         'buy': data.get_day_events('buy', coin),
         'donate': data.get_day_events('donate', coin),
@@ -343,7 +394,13 @@ def get_day_stats(coin):
     }
 
 
-def get_week_stats(coin):
+def get_week_stats(coin: str) -> dict:
+    """
+    Return dict of stats of events in the past week
+
+    @param coin: con symbol e.g. "STANZ"
+    @return: stats dict
+    """
     return {
         'buy': data.get_week_events('buy', coin),
         'donate': data.get_week_events('donate', coin),
@@ -359,66 +416,114 @@ class UpdateTask(commands.Cog):
         self.update_lock = threading.Lock()
 
     async def run_old_timers(self):
+        """Starts up old timers that werent finished when the bot was closed."""
+
         print(f'running old timers')
+        # get all the timers attached to a self.bot and run them
         timers = data.get_all_timers(self.bot.user.id)
         for timer in timers:
             asyncio.create_task(self.run_timer(timer))
 
-    async def run_timer(self, timer):
+    async def run_timer(self, timer: dict) -> None:
+        """
+        Run a timer.
+
+        @param timer: Timer object dict
+        """
         now = round(time.time())
 
+        # if timer hasn't expired yet, wait for needed amount
         if timer['expires'] > now:
             await asyncio.sleep(int(timer['expires'] - now))
 
+        # call timer event when timer is finished
         await self.call_timer_event(timer)
 
     async def call_timer_event(self, timer):
+        """
+        Call provided timer event.
+    
+        @param timer: Timer object dict
+        """
+        # check if timer has been deleted, if it hasn't call provided event
         timer = data.get_timer(timer['id'])
         if not timer:
             return
 
+        # delete timer
         data.delete_timer(timer['id'])
+        
+        # dispatch event
         self.bot.dispatch(f'{timer["event"]}_timer_over', timer)
 
-    async def create_timer(self, **kwargs):
-        timer_id = data.add_timer(kwargs)
-        kwargs['id'] = timer_id
-        asyncio.create_task(self.run_timer(kwargs))
+    async def create_timer(self, *, guild_id: int, expires: int, event: str, extras: dict, bot_id: int) -> None:
+        """
+        Create a new timer to run in the background, slowly ticking away, until its time to strike.
+    
+        @param guild_id: guild id
+        @param expires: time when timer expires (epoch time)
+        @param event: event to call when timer is over "on_{event}_timer_over"
+        @param extras: extra values
+        @param bot_id: bot id
+        """
+        
+        timer = {
+            'guild_id': guild_id,
+            'expires': expires,
+            'event': event,
+            'extras': extras,
+            'bot_id': bot_id
+        }
+        
+        timer_id = data.add_timer(timer)
+        timer['id'] = timer_id
+        asyncio.create_task(self.run_timer(timer))
 
     @commands.Cog.listener()
-    async def on_daily_stats_timer_over(self, timer):
+    async def on_daily_stats_timer_over(self, timer: dict) -> None:
+        """
+        Function called when daily_stats timer is over.
+        
+        @param timer: timer object dict
+        """
+        # delete week old stats
         data.delete_week_old()
+        
+        # gather some needed data
         guild_id = timer['guild_id']
         channel_name = timer['extras']['channel_name']
         webhook_url = await get_webhook_url(guild_id, channel_name)
-
         default_coin = data.get_default_coin(int(guild_id))
+        
+        # check if there is a webhook url to send stats to
         if webhook_url:
+            # gather stats data
             coin_day_stats = get_day_stats(default_coin)
             total_stats = rally_api.get_coin_summary(default_coin)
             rewards = rally_api.get_coin_rewards(default_coin)
+            
+            # create stats message
             coin_image_url = rally_api.get_coin_image_url(default_coin)
-
             message = {
-              "embeds": [
-                {
-                  "description": f"```xl\n- Total # of coins: {total_stats['totalCoins']}\n\n"
-                                 f"- Total # of supporters: {total_stats['totalSupporters']}\n\n"
-                                 f"- Total Support Volume: {total_stats['totalSupportVolume']} USD\n\n\n"
-                                 f"- Today`s # of purchases: {len(coin_day_stats['buy'])}\n\n"
-                                 f"- Today`s # of donations: {len(coin_day_stats['donate'])}\n\n"
-                                 f"- Today`s # of transfers: {len(coin_day_stats['transfer'])}\n\n"
-                                 f"- Today`s # of conversions: {len(coin_day_stats['convert'])}\n\n"
-                                 f"- Today`s # of redeems: {len(coin_day_stats['redeem'])}\n\n"
-                                 f"- Today`s # of rewards earned: {rewards['last24HourEarned']}\n```",
-                  "color": 0xff0000,
-                  "author": {
-                    "name": f"{default_coin} Daily Stats",
-                    "icon_url": coin_image_url
-                  },
-                  "timestamp": datetime.datetime.now().isoformat()
-                }
-              ]
+                "embeds": [
+                    {
+                        "description": f"```xl\n- Total # of coins: {total_stats['totalCoins']}\n\n"
+                                       f"- Total # of supporters: {total_stats['totalSupporters']}\n\n"
+                                       f"- Total Support Volume: {total_stats['totalSupportVolume']} USD\n\n\n"
+                                       f"- Today`s # of purchases: {len(coin_day_stats['buy'])}\n\n"
+                                       f"- Today`s # of donations: {len(coin_day_stats['donate'])}\n\n"
+                                       f"- Today`s # of transfers: {len(coin_day_stats['transfer'])}\n\n"
+                                       f"- Today`s # of conversions: {len(coin_day_stats['convert'])}\n\n"
+                                       f"- Today`s # of redeems: {len(coin_day_stats['redeem'])}\n\n"
+                                       f"- Today`s # of rewards earned: {rewards['last24HourEarned']}\n```",
+                        "color": 0xff0000,
+                        "author": {
+                            "name": f"{default_coin} Daily Stats",
+                            "icon_url": coin_image_url
+                        },
+                        "timestamp": datetime.datetime.now().isoformat()
+                    }
+                ]
             }
 
             requests.post(webhook_url, json=message)
@@ -432,6 +537,7 @@ class UpdateTask(commands.Cog):
         if not timer['extras']['timezone']:
             timer['extras']['timezone'] = 0
 
+        # get time until next midnight
         dt = datetime.datetime.utcnow() + datetime.timedelta(hours=int(timer['extras']['timezone']))
         time_midnight = time.time() + (((24 - dt.hour - 1) * 60 * 60) + ((60 - dt.minute - 1) * 60) + (60 - dt.second))
 
@@ -449,22 +555,36 @@ class UpdateTask(commands.Cog):
         )
 
     @staticmethod
-    async def start_bot_instance(bot_instance):
+    async def start_bot_instance(token: str) -> None:
+        """
+        Stats a bot instance.
+
+        @param token: Bot token
+        """
+        # get initiated bot class from main
         from main import bot
 
         try:
-            await bot.start(bot_instance)
+            # start up bot instance
+            await bot.start(token)
         finally:
+            # close if needed
             if not bot.is_closed():
                 await bot.close()
 
-        running_bot_instances.remove(bot_instance[BOT_TOKEN_KEY])
+        # remove bot from running bot instances
+        running_bot_instances.remove(token)
 
-    async def run_bot_instances(self):
+    async def run_bot_instances(self) -> None:
+        """Start up all the bot instances."""
+        # get all bot instances
         all_bot_instances = data.get_all_bot_instances()
+
         if all_bot_instances:
             for instance in all_bot_instances:
+                # add bot token to list of running bot instances
                 running_bot_instances.append(instance[BOT_TOKEN_KEY])
+                # create task for bot start function
                 asyncio.create_task(self.start_bot_instance(instance[BOT_TOKEN_KEY]))
 
     @commands.Cog.listener()
@@ -480,7 +600,8 @@ class UpdateTask(commands.Cog):
             bot_instance = data.get_bot_instance_token(self.bot.http.token)
 
             if bot_instance[BOT_ACTIVITY_TEXT_KEY]:
-                await update_activity(bot_instance, bot_instance[BOT_ACTIVITY_TYPE_KEY], bot_instance[BOT_ACTIVITY_TEXT_KEY])
+                await update_activity(bot_instance, bot_instance[BOT_ACTIVITY_TYPE_KEY],
+                                      bot_instance[BOT_ACTIVITY_TEXT_KEY])
 
             # set bot id
             data.set_bot_id(self.bot.user.id, self.bot.http.token)

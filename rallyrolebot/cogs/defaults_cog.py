@@ -1,14 +1,11 @@
 import json
 import sys
-import time
 import traceback
 import asyncio
 import datetime
 import discord
-from discord.ext import commands, tasks
-from discord.utils import get
+from discord.ext import commands
 
-from constants import *
 import data
 import rally_api
 import validation
@@ -38,18 +35,26 @@ class DefaultsCommands(commands.Cog):
             type(error), error, error.__traceback__, file=sys.stderr
         )
 
-    async def update_setting(self, ctx, alert, alert_nr, value, setting):
+    @staticmethod
+    async def update_setting(ctx, alert, alert_nr, value, setting):
+        # check if any value is missing
         if not alert or not alert_nr or not value:
             return await pretty_print(ctx, "Missing <alert>, <alert_nr> or <value>", title='Error', color=ERROR_COLOR)
 
+        # check if settings have been configured on the dashboard
         settings = data.get_alerts_settings(ctx.guild.id)
+        if not settings:
+            return await pretty_print(ctx, "Alert settings have not been configured on the dashboard", title='Error', color=ERROR_COLOR)
+
         settings = settings[ALERTS_SETTINGS_KEY]
 
+        # check if given alert is valid
         if alert not in settings:
             return await pretty_print(ctx, "Invalid <Alert>", title='Error', color=ERROR_COLOR)
 
         channel_object = None
         instance = None
+        # check if alert_nr is a digit and check if its valid
         if alert_nr.isdigit():
             if int(alert_nr) > len(settings[alert]['instances']) or int(alert_nr) < 0:
                 return await pretty_print(ctx, "Couldn't find an entry by that alert number", title='Error', color=ERROR_COLOR)
@@ -57,12 +62,11 @@ class DefaultsCommands(commands.Cog):
             instance = settings[alert]['instances'][int(alert_nr) - 1]
             channel_object = discord.utils.get(ctx.guild.channels, name=instance['channel'])
 
+        # check if alert_nr was valid and instance and channel_object were set
         if not channel_object or not instance:
             return await pretty_print(ctx, "Invalid <alert_nr>", title='Error', color=ERROR_COLOR)
 
-        if not settings:
-            return await pretty_print(ctx, "Alert settings have not been configured on the dashboard", title='Error', color=ERROR_COLOR)
-
+        # update settings
         instance['settings'][setting] = value
         data.set_alerts_settings(ctx.guild.id, json.dumps(settings))
 
