@@ -38,6 +38,7 @@ class Command(BaseModel):
 class AlertsSettings(BaseModel):
     guildId: Optional[str] = None
     settings: Optional[Dict] = None
+    error: Optional[str] = None
 
       
 class CoinPrice(BaseModel):

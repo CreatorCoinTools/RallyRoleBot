@@ -145,7 +145,7 @@ async def get_webhook_url(guild_id, channel_name):
     return webhook_url
 
 
-async def process_payload(payload: dict):
+async def process_payload(payload: dict, failed=False):
     # add to stats
     coin_kind = payload['coinKind']
     event = payload['event'].lower()
@@ -181,7 +181,12 @@ async def process_payload(payload: dict):
                     continue
 
                 message = await format_alert_message(event, payload, instance)
-                requests.post(webhook_url, json=message)
+                request = requests.post(webhook_url, json=message)
+
+                # request failed, delete db entry and try again, if it fails a second time dont try again
+                if request.status_code not in [200, 204] and not failed:
+                    data.delete_webhook(webhook_url)
+                    return await process_payload(payload, True)
 
 
 async def grant_deny_channel_to_member(channel_mapping, member, balances):

@@ -2,6 +2,7 @@ import data
 import json
 import datetime
 import time
+import discord
 
 from cogs import update_cog
 from fastapi import APIRouter, Depends, HTTPException
@@ -49,6 +50,20 @@ async def add_mappings(mapping: AlertsSettings, guildId: str):
                 bot_object = update_cog.main_bot
             else:
                 bot_object = update_cog.running_bots[bot_instance[BOT_ID_KEY]]['bot']
+
+            try:
+                # get guild to see if bot has permission to manage webhooks
+                guild_object = bot_object.get_guild(int(guildId))
+                if not guild_object:
+                    guild_object = await bot_object.fetch_guild(guildId)
+                    if not guild_object:
+                        return
+
+                has_permission = guild_object.me.guild_permissions.is_superset(discord.Permissions(536870912))
+                if not has_permission:
+                    return {'error': "Bot is missing Manage Webhooks permissions"}
+            except:
+                return {'error': "Invalid Guild"}
 
             if not instance['settings']['timezone']:
                 instance['settings']['timezone'] = '0'

@@ -556,6 +556,12 @@ def get_webhook(db, guildId, channelId):
 
 
 @connect_db
+def delete_webhook(db, uri):
+    table = db[WEBHOOKS_TABLE]
+    table.delete(webhook_uri=uri)
+
+
+@connect_db
 def get_all_webhooks(db):
     table = db[WEBHOOKS_TABLE]
     return [t for t in table.all()]
