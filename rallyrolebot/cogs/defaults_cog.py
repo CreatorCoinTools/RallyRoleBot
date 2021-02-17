@@ -73,6 +73,7 @@ class DefaultsCommands(commands.Cog):
         name='setmin',
         help='<alert> <alert nr> <value> - Set the minimum amount for an alert'
     )
+    @commands.guild_only()
     async def setmin(self, ctx, alert, alert_nr, value):
         return await self.update_setting(ctx, alert, alert_nr, value, 'minamount')
 
@@ -80,6 +81,7 @@ class DefaultsCommands(commands.Cog):
         name='setmax',
         help='<alert> <alert nr> <value> - Set the minimum amount for an alert'
     )
+    @commands.guild_only()
     async def setmax(self, ctx, alert, alert_nr, value):
         return await self.update_setting(ctx, alert, alert_nr, value, 'maxamount')
 
@@ -87,6 +89,7 @@ class DefaultsCommands(commands.Cog):
         name='settimezone',
         help='<alert nr> <value (-12 - +12)> - Set timezone setting for daily stats message'
     )
+    @commands.guild_only()
     async def settimezone(self, ctx, alert_nr, value):
         return await self.update_setting(ctx, 'daily_stats', alert_nr, value, 'timezone')
 
@@ -94,6 +97,7 @@ class DefaultsCommands(commands.Cog):
         name='allcoinstats',
         help='<timeframe> - (day/week) list the following stats in the coin alerts channel based on the time given'
     )
+    @commands.guild_only()
     async def allcoinstats(self, ctx, timeframe: TimeframeType):
         # delete week old data
         data.delete_week_old_events()
