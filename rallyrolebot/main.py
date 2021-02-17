@@ -7,7 +7,9 @@ import cogs
 
 
 config.parse_args()
-intents = discord.Intents.all()
+intents = discord.Intents.default()
+intents.guilds = True
+intents.members = True
 default_prefix = config.CONFIG.command_prefix
 
 
