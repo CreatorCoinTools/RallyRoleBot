@@ -1,13 +1,9 @@
 import discord
 from discord.ext import commands
 from cogs import *
-import asyncio
 import config
 import data
 import cogs
-import functools
-import app
-import signal
 
 
 config.parse_args()
@@ -38,58 +34,13 @@ class RallyRoleBot(commands.Bot):
         for command in self.commands:
             data.add_command(command.name, command.help)
 
-    def run(self, *args, **kwargs):
-        """Run funciton, most of this is copied from the discord command, added needed modifications."""
-        loop = asyncio.get_event_loop()
+    async def close(self):
+        await super().close()
 
-        async def _stop(*a):
-            # shutdown api
-            if app.server.should_exit:
-                app.server.force_exit = True
-            else:
-                app.server.should_exit = True
-
-            await asyncio.wait_for(app.server.shutdown(), timeout=1000)
-
-            # close loop and shutdown discord bot
-            loop.stop()
-
-        try:
-            func = functools.partial(asyncio.create_task, _stop())
-            loop.add_signal_handler(signal.SIGINT, func)
-            loop.add_signal_handler(signal.SIGTERM, func)
-        except NotImplementedError:
-            pass
-
-        async def runner():
-            asyncio.create_task(app.run(loop))
-            try:
-                await self.start(*args, **kwargs)
-            finally:
-                if not self.is_closed():
-                    await self.close()
-
-        def stop_loop_on_completion(f):
-            loop.stop()
-
-        future = asyncio.ensure_future(runner(), loop=loop)
-        future.add_done_callback(stop_loop_on_completion)
-        try:
-            loop.run_forever()
-        except KeyboardInterrupt:
-            pass
-        finally:
-            future.remove_done_callback(stop_loop_on_completion)
-            discord.client._cleanup_loop(loop)
-
-        if not future.cancelled():
-            try:
-                return future.result()
-            except KeyboardInterrupt:
-                # I am unsure why this gets raised here but suppress it anyway
-                return None
+    def run(self):
+        super().run(config.CONFIG.secret_token, reconnect=True)
 
 
 bot = RallyRoleBot()
 if __name__ == "__main__":
-    bot.run(config.CONFIG.secret_token)
+    bot.run()

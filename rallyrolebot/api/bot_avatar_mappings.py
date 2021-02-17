@@ -2,7 +2,7 @@ import data
 import re
 import base64
 import time
-from cogs import update_cog
+import os
 
 from fastapi import APIRouter, Depends, HTTPException
 from .dependencies import owner_or_admin
@@ -28,11 +28,6 @@ async def read_mapping(guildId: str):
         return {"bot_avatar": DEFAULT_BOT_AVATAR_URL, "guildId": guildId}
 
     avatar = bot_instance[BOT_AVATAR_KEY]
-    # set avatar in db to current bot avatar_url if name is empty
-    if not avatar:
-        bot_object = update_cog.running_bots[bot_instance[BOT_ID_KEY]]['bot']
-        avatar = bot_object.user.avatar_url
-        data.set_bot_avatar(guildId, str(bot_object.user.avatar_url))
 
     return {"bot_avatar": avatar, "avatar_timeout": int(bool(bot_instance[AVATAR_TIMEOUT_KEY])), "guildId": guildId}
 
@@ -48,15 +43,29 @@ async def add_mapping(mapping: BotAvatarMapping, guildId: str):
         data.set_avatar_timout(bot_instance[GUILD_ID_KEY], 0)
         bot_instance[AVATAR_TIMEOUT_KEY] = 0
 
-    bot_object = update_cog.running_bots[bot_instance[BOT_ID_KEY]]['bot']
-    if mapping.bot_avatar is not None and not bot_instance[AVATAR_TIMEOUT_KEY]:
-        # get image from base64
+    if not bot_instance[AVATAR_TIMEOUT_KEY]:
+        # read new avatar data and decode the base64 form
         ext, image_data = re.findall('/(.*);base64,(.*)', mapping.bot_avatar)[0]
         new_avatar = base64.decodebytes(image_data.encode('utf-8'))
 
-        error = await update_cog.update_avatar(bot_instance, new_avatar)
+        # get path to tmp folder where avatars will be stored temporarily
+        tmp_folder = os.path.abspath('tmp/')
+        if not os.path.exists(tmp_folder):
+            os.mkdir(tmp_folder)
 
-        if error:
-            raise HTTPException(status_code=500, detail="Error changing bot avatar")
+        # get path to new file and write bytes to it
+        file_path = os.path.join(os.path.abspath('tmp/'), f'{guildId}_tmp_bot_avatar.{ext}')
+        with open(file_path, 'wb+') as file:
+            file.write(new_avatar)
 
-    return {"bot_avatar": str(bot_object.user.avatar_url), 'guildId': guildId, 'avatar_timeout': int(bool(bot_instance[AVATAR_TIMEOUT_KEY]))}
+        task = {
+            'kwargs': {
+                'guild_id': int(guildId),
+                'bot_id': int(bot_instance[BOT_ID_KEY]),
+                'new_avatar_path': file_path,
+            },
+            'function': 'update_avatar'
+        }
+        data.add_task(task)
+
+    return {"bot_avatar": mapping.bot_avatar, 'guildId': guildId, 'avatar_timeout': int(bool(bot_instance[AVATAR_TIMEOUT_KEY]))}

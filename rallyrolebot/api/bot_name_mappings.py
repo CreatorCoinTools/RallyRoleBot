@@ -25,12 +25,6 @@ async def read_mapping(guildId: str):
     if not bot_instance:
         return {"guildId": guildId, "bot_name": "rallybot"}
 
-    # set name in db to current bot name if name is empty
-    if not bot_instance[BOT_NAME_KEY]:
-        bot_object = update_cog.running_bots[bot_instance[BOT_ID_KEY]]['bot']
-        bot_instance[BOT_NAME_KEY] = bot_object.user.name
-        data.set_bot_name(guildId, bot_object.user.name)
-
     return {"guildId": guildId, "bot_name": bot_instance[BOT_NAME_KEY], 'name_timeout': int(bool(bot_instance[NAME_TIMEOUT_KEY]))}
 
 
@@ -45,23 +39,15 @@ async def add_mapping(mapping: BotNameMapping, guildId: str):
         data.set_name_timeout(bot_instance[GUILD_ID_KEY], 0)
         bot_instance[NAME_TIMEOUT_KEY] = 0
 
-    bot_object = update_cog.running_bots[bot_instance[BOT_ID_KEY]]['bot']
-
     if mapping.bot_name and not bot_instance[NAME_TIMEOUT_KEY]:
-        data.set_bot_name(guildId, mapping.bot_name)
+        task = {
+            'kwargs': {
+                'guild_id': int(guildId),
+                'bot_id': int(bot_instance[BOT_ID_KEY]),
+                'new_name': mapping.bot_name,
+            },
+            'function': 'update_name'
+        }
+        data.add_task(task)
 
-        # name change
-        try:
-            if mapping.bot_name != bot_object.user.name:
-                await bot_object.user.edit(username=mapping.bot_name)
-                data.set_bot_name(guildId, mapping.bot_name)
-
-        except discord.HTTPException:
-            # user is editing name too many times, set 1h timeout
-            timout = round(time.time() + 3600)
-            data.set_name_timeout(bot_instance[GUILD_ID_KEY], timout)
-            bot_instance[NAME_TIMEOUT_KEY] = timout
-        except:
-            raise HTTPException(status_code=500, detail="Error changing bot name")
-
-    return {"guildId": guildId, "bot_name": bot_object.user.name, 'name_timeout': int(bool(bot_instance[NAME_TIMEOUT_KEY]))}
+    return {"guildId": guildId, "bot_name": mapping.bot_name, 'name_timeout': int(bool(bot_instance[NAME_TIMEOUT_KEY]))}

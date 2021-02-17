@@ -68,6 +68,8 @@ COIN_KIND_KEY = 'coinKind'
 EVENTS_TABLE = 'eventsTable'
 EVENT_KEY = 'event'
 
+TASKS_TABLE = 'tasks_table'
+
 
 """
  Constants useful for  rally_api module

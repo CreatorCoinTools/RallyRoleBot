@@ -622,3 +622,21 @@ def delete_week_old(db):
 def get_guilds_by_coin(db, coin):
     table = db[DEFAULT_COIN_TABLE]
     return [r for r in table.find(coinKind=coin)]
+
+
+@connect_db
+def add_task(db, task):
+    table = db[TASKS_TABLE]
+    return table.insert(task)
+
+
+@connect_db
+def delete_task(db, id):
+    table = db[TASKS_TABLE]
+    return table.delete(id=id)
+
+
+@connect_db
+def get_tasks(db):
+    table = db[TASKS_TABLE]
+    return [t for t in table.all()]

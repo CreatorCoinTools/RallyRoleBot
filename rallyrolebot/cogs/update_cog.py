@@ -8,10 +8,11 @@ import discord.utils
 import re
 
 from typing import Optional
-from discord.ext import commands, tasks
+from discord.ext import commands
+from discord.ext import tasks as discord_tasks
 from discord.utils import get
 from constants import *
-
+from utils import tasks
 import aiohttp
 
 import config
@@ -310,74 +311,6 @@ async def force_update(bot, ctx):
     await bot.get_cog("UpdateTask").force_update(ctx)
 
 
-async def update_activity(bot_instance: dict, activity_type_str: str, activity_text: str) -> bool:
-    """
-    Updates bot activity on the bot instance and in the database
-
-    @param bot_instance: bot instance entry in the database
-    @param activity_type_str: string of activity type to be converted into discord activity object
-    @param activity_text: text for activity
-
-    @return: True if error occurred, False if everything changed properly
-    """
-    if activity_type_str and activity_text:
-        # get proper object for activity type
-        activity_type_switch = {
-            'playing': discord.ActivityType.playing,
-            'listening': discord.ActivityType.listening,
-            'competing': discord.ActivityType.competing,
-            'watching': discord.ActivityType.watching
-        }
-        activity_type = activity_type_switch.get(activity_type_str, None)
-        if not activity_type:
-            return True
-
-        current_activity = running_bots[bot_instance[BOT_ID_KEY]]['activity']
-        bot_object = running_bots[bot_instance[BOT_ID_KEY]]['bot']
-
-        try:
-            # check that current_activity isn't duplicate of new activity
-            if not current_activity or (current_activity and current_activity.type != activity_text) or \
-                    (current_activity and repr(current_activity.name) != repr(activity_text)):
-                # update all the needed stuff
-                new_activity = discord.Activity(type=activity_type, name=activity_text)
-                running_bots[bot_instance[BOT_ID_KEY]]['activity'] = new_activity
-                await bot_object.change_presence(status=discord.Status.online, activity=new_activity)
-                data.set_activity(bot_instance[GUILD_ID_KEY], activity_type_str, activity_text)
-        except:
-            return True
-        
-    return False
-
-
-async def update_avatar(bot_instance: dict, new_avatar: bytes = None) -> bool:
-    """
-    Update the avatar of a bot instance.
-
-    @param bot_instance: dict of bot instance db entry
-    @param new_avatar: new avatar in bytes form
-    @return: True if error occurred, otherwise False
-    """
-    if new_avatar is None:
-        new_avatar = default_avatar
-
-    error = False
-    # avatar change
-    try:
-        bot_object = running_bots[bot_instance[BOT_ID_KEY]]['bot']
-        await bot_object.user.edit(avatar=new_avatar)
-        data.set_bot_avatar(bot_instance[GUILD_ID_KEY], str(bot_object.user.avatar_url))
-    except discord.HTTPException:
-        # user is editing avatar too many times, set 1h timeout
-        timout = round(time.time() + 3600)
-        data.set_avatar_timout(bot_instance[GUILD_ID_KEY], timout)
-        bot_instance[AVATAR_TIMEOUT_KEY] = timout
-    except Exception as e:
-        error = True
-
-    return error
-
-
 def get_day_stats(coin: str) -> dict:
     """
     Return dict of stats of events in the past 24h
@@ -414,6 +347,7 @@ class UpdateTask(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.update_lock = threading.Lock()
+        self.task_run_lock = threading.Lock()
 
     async def run_old_timers(self):
         """Starts up old timers that werent finished when the bot was closed."""
@@ -573,7 +507,8 @@ class UpdateTask(commands.Cog):
                 await bot.close()
 
         # remove bot from running bot instances
-        running_bot_instances.remove(token)
+        if token in running_bot_instances:
+            running_bot_instances.remove(token)
 
     async def run_bot_instances(self) -> None:
         """Start up all the bot instances."""
@@ -599,9 +534,9 @@ class UpdateTask(commands.Cog):
         if config.CONFIG.secret_token != self.bot.http.token:
             bot_instance = data.get_bot_instance_token(self.bot.http.token)
 
+            # set presence
             if bot_instance[BOT_ACTIVITY_TEXT_KEY]:
-                await update_activity(bot_instance, bot_instance[BOT_ACTIVITY_TYPE_KEY],
-                                      bot_instance[BOT_ACTIVITY_TEXT_KEY])
+                await self.bot.change_presence(status=discord.Status.online, activity=running_bots[self.bot.user.id]['activity'])
 
             # set bot id
             data.set_bot_id(self.bot.user.id, self.bot.http.token)
@@ -613,6 +548,7 @@ class UpdateTask(commands.Cog):
             global main_bot
             main_bot = self.bot
             asyncio.create_task(self.run_bot_instances())
+            self.run_tasks.start()
 
         print("We have logged in as {0.user}".format(self.bot))
         self.update.start()
@@ -636,7 +572,26 @@ class UpdateTask(commands.Cog):
         self.update.restart()
         await ctx.send("Updating!")
 
-    @tasks.loop(seconds=UPDATE_WAIT_TIME)
+    @discord_tasks.loop(seconds=5)
+    async def run_tasks(self):
+        await self.bot.wait_until_ready()
+        with self.task_run_lock:
+            all_tasks = data.get_tasks()
+            for task in all_tasks:
+                try:
+                    # get function object and kwargs
+                    task_function = getattr(tasks, task['function'])
+                    kwargs = task['kwargs']
+
+                    # call function
+                    asyncio.create_task(task_function(**kwargs))
+
+                    # delete task
+                    data.delete_task(task['id'])
+                except Exception as e:
+                    print(e)
+
+    @discord_tasks.loop(seconds=UPDATE_WAIT_TIME)
     async def update(self):
         await self.bot.wait_until_ready()
         with self.update_lock:
