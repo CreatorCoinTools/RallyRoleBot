@@ -16,6 +16,7 @@ from cogs import update_cog
 
 from constants import *
 from utils import pretty_print
+from utils.converters import TimeframeType
 
 
 class DefaultsCommands(commands.Cog):
@@ -37,10 +38,6 @@ class DefaultsCommands(commands.Cog):
 
     @staticmethod
     async def update_setting(ctx, alert, alert_nr, value, setting):
-        # check if any value is missing
-        if not alert or not alert_nr or not value:
-            return await pretty_print(ctx, "Missing <alert>, <alert_nr> or <value>", title='Error', color=ERROR_COLOR)
-
         # check if settings have been configured on the dashboard
         settings = data.get_alerts_settings(ctx.guild.id)
         if not settings:
@@ -76,44 +73,39 @@ class DefaultsCommands(commands.Cog):
         name='setmin',
         help='<alert> <alert nr> <value> - Set the minimum amount for an alert'
     )
-    async def setmin(self, ctx, alert=None, alert_nr=None, value=None):
+    async def setmin(self, ctx, alert, alert_nr, value):
         return await self.update_setting(ctx, alert, alert_nr, value, 'minamount')
 
     @commands.command(
         name='setmax',
         help='<alert> <alert nr> <value> - Set the minimum amount for an alert'
     )
-    async def setmax(self, ctx, alert=None, alert_nr=None, value=None):
+    async def setmax(self, ctx, alert, alert_nr, value):
         return await self.update_setting(ctx, alert, alert_nr, value, 'maxamount')
 
     @commands.command(
         name='settimezone',
         help='<alert nr> <value (-12 - +12)> - Set timezone setting for daily stats message'
     )
-    async def settimezone(self, ctx, alert_nr=None, value=None):
-        if not alert_nr or not value:
-            return await pretty_print(ctx, "Missing <alert_nr> or <value>", title='Error', color=ERROR_COLOR)
-
+    async def settimezone(self, ctx, alert_nr, value):
         return await self.update_setting(ctx, 'daily_stats', alert_nr, value, 'timezone')
 
     @commands.command(
         name='allcoinstats',
-        help='<day/week> - list the following stats in the coin alerts channel based on the time given'
+        help='<timeframe> - (day/week) list the following stats in the coin alerts channel based on the time given'
     )
-    async def allcoinstats(self, ctx, timeframe=''):
-        data.delete_week_old()
-        timeframe = timeframe.lower()
-        if timeframe not in ['day', 'week']:
-            return await pretty_print(
-                ctx, "Invalid timeframe, please type `day` or `week`", title="Error", color=ERROR_COLOR
-            )
+    async def allcoinstats(self, ctx, timeframe: TimeframeType):
+        # delete week old data
+        data.delete_week_old_events()
 
+        # if default coin isn't set, send info to user about how to set it
         default_coin = data.get_default_coin(ctx.guild.id)
         if not default_coin:
             return await pretty_print(
                 ctx, "A default coin has not been set. An admin can set the default coin by typing $setdefaultcoin . Type $help for more information.", title="Error", color=ERROR_COLOR
             )
 
+        # get statistics
         if timeframe == 'day':
             coin_stats = update_cog.get_day_stats(default_coin)
         else:
@@ -122,16 +114,17 @@ class DefaultsCommands(commands.Cog):
         rewards = rally_api.get_coin_rewards(default_coin)
         coin_image_url = rally_api.get_coin_image_url(default_coin)
 
+        # format message, done through dict to make keeping this and daily_stats message similar easier
         extra_str = 'Today' if timeframe == 'day' else 'This Week'
         reward_str = 'last24HourEarned' if timeframe == 'day' else 'weeklyAccumulatedReward'
         message = {
             "description": f"```xl\n"
-                           f"- {extra_str}`s # of purchases: {len(coin_stats['buy'])}\n\n"
-                           f"- {extra_str}`s # of donations: {len(coin_stats['donate'])}\n\n"
-                           f"- {extra_str}`s # of transfers: {len(coin_stats['transfer'])}\n\n"
-                           f"- {extra_str}`s # of conversions: {len(coin_stats['convert'])}\n\n"
-                           f"- {extra_str}`s # of redeems: {len(coin_stats['redeem'])}\n\n"
-                           f"- {extra_str}`s # of rewards earned: {rewards[reward_str]}\n"
+                           f"- {extra_str}`s purchases: {len(coin_stats['buy'])}\n\n"
+                           f"- {extra_str}`s donations: {len(coin_stats['donate'])}\n\n"
+                           f"- {extra_str}`s transfers: {len(coin_stats['transfer'])}\n\n"
+                           f"- {extra_str}`s conversions: {len(coin_stats['convert'])}\n\n"
+                           f"- {extra_str}`s redeems: {len(coin_stats['redeem'])}\n\n"
+                           f"- {extra_str}`s rewards earned: {rewards[reward_str]}\n"
                            f"```",
             "color": 0xff0000,
             "author": {
@@ -141,6 +134,7 @@ class DefaultsCommands(commands.Cog):
             "timestamp": datetime.datetime.now().isoformat()
         }
 
+        # send message
         embed = discord.Embed.from_dict(message)
         return await ctx.send(embed=embed)
 

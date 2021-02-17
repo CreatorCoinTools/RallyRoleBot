@@ -610,7 +610,7 @@ def get_week_events(db, event, coin):
 
 
 @connect_db
-def delete_week_old(db):
+def delete_week_old_events(db):
     table = db[EVENTS_TABLE]
     ago_1week = time.time() - (7 * 24 * 3600)
     week_old = table.find(timeAdded={'lt': ago_1week})

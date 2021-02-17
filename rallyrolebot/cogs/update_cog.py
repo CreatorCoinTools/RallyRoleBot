@@ -421,7 +421,7 @@ class UpdateTask(commands.Cog):
         @param timer: timer object dict
         """
         # delete week old stats
-        data.delete_week_old()
+        data.delete_week_old_events()
         
         # gather some needed data
         guild_id = timer['guild_id']
@@ -441,15 +441,15 @@ class UpdateTask(commands.Cog):
             message = {
                 "embeds": [
                     {
-                        "description": f"```xl\n- Total # of coins: {total_stats['totalCoins']}\n\n"
-                                       f"- Total # of supporters: {total_stats['totalSupporters']}\n\n"
+                        "description": f"```xl\n- Total coins: {total_stats['totalCoins']}\n\n"
+                                       f"- Total supporters: {total_stats['totalSupporters']}\n\n"
                                        f"- Total Support Volume: {total_stats['totalSupportVolume']} USD\n\n\n"
-                                       f"- Today`s # of purchases: {len(coin_day_stats['buy'])}\n\n"
-                                       f"- Today`s # of donations: {len(coin_day_stats['donate'])}\n\n"
-                                       f"- Today`s # of transfers: {len(coin_day_stats['transfer'])}\n\n"
-                                       f"- Today`s # of conversions: {len(coin_day_stats['convert'])}\n\n"
-                                       f"- Today`s # of redeems: {len(coin_day_stats['redeem'])}\n\n"
-                                       f"- Today`s # of rewards earned: {rewards['last24HourEarned']}\n```",
+                                       f"- Today`s purchases: {len(coin_day_stats['buy'])}\n\n"
+                                       f"- Today`s donations: {len(coin_day_stats['donate'])}\n\n"
+                                       f"- Today`s transfers: {len(coin_day_stats['transfer'])}\n\n"
+                                       f"- Today`s conversions: {len(coin_day_stats['convert'])}\n\n"
+                                       f"- Today`s redeems: {len(coin_day_stats['redeem'])}\n\n"
+                                       f"- Today`s rewards earned: {rewards['last24HourEarned']}\n```",
                         "color": 0xff0000,
                         "author": {
                             "name": f"{default_coin} Daily Stats",
