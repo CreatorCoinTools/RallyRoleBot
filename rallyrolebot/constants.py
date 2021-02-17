@@ -91,9 +91,9 @@ DEFAULT_BOT_AVATAR_URL = "https://rallybot.app/img/space.5424f731.png"
 
 API_TAGS_METADATA = [
     {"name": "channels", "description": "Coin channel mappings"},
-    {"name": "coin", "description": "Default coin in guild"},
+    {"name": "coin", "description": "Default coin in server"},
     {"name": "commands", "description": "Get list of all available bot commands"},
-    {"name": "prefix", "description": "Command prefix in guild"},
+    {"name": "prefix", "description": "Command prefix in server"},
     {"name": "roles", "description": "Coin role mappings"},
     {"name": "coins", "description": "Coin price data"},
     {"name": "bot_instance", "description": "Bot instances"},
