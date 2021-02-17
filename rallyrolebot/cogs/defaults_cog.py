@@ -124,7 +124,7 @@ class DefaultsCommands(commands.Cog):
                            f"- {extra_str}`s transfers: {len(coin_stats['transfer'])}\n\n"
                            f"- {extra_str}`s conversions: {len(coin_stats['convert'])}\n\n"
                            f"- {extra_str}`s redeems: {len(coin_stats['redeem'])}\n\n"
-                           f"- {extra_str}`s rewards earned: {rewards[reward_str]}\n"
+                           f"- {extra_str}`s rewards earned: {round(rewards[reward_str], 3)}\n"
                            f"```",
             "color": 0xff0000,
             "author": {

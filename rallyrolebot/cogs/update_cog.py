@@ -441,15 +441,15 @@ class UpdateTask(commands.Cog):
             message = {
                 "embeds": [
                     {
-                        "description": f"```xl\n- Total coins: {total_stats['totalCoins']}\n\n"
-                                       f"- Total supporters: {total_stats['totalSupporters']}\n\n"
-                                       f"- Total Support Volume: {total_stats['totalSupportVolume']} USD\n\n\n"
+                        "description": f"```xl\n- Total coins: {round(total_stats['totalCoins'], 3)}\n\n"
+                                       f"- Total supporters: {round(total_stats['totalSupporters'], 3)}\n\n"
+                                       f"- Total support volume: {round(total_stats['totalSupportVolume'], 3)} USD\n\n\n"
                                        f"- Today`s purchases: {len(coin_day_stats['buy'])}\n\n"
                                        f"- Today`s donations: {len(coin_day_stats['donate'])}\n\n"
                                        f"- Today`s transfers: {len(coin_day_stats['transfer'])}\n\n"
                                        f"- Today`s conversions: {len(coin_day_stats['convert'])}\n\n"
                                        f"- Today`s redeems: {len(coin_day_stats['redeem'])}\n\n"
-                                       f"- Today`s rewards earned: {rewards['last24HourEarned']}\n```",
+                                       f"- Today`s rewards earned: {round(rewards['last24HourEarned'], 3)}\n```",
                         "color": 0xff0000,
                         "author": {
                             "name": f"{default_coin} Daily Stats",
