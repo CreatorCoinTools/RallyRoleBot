@@ -1,6 +1,7 @@
-from typing import Optional
+from typing import Optional, Dict, List
 from datetime import datetime
 from pydantic import BaseModel
+import json
 
 
 class ChannelMapping(BaseModel):
@@ -34,6 +35,12 @@ class Command(BaseModel):
     description: str
 
 
+class AlertsSettings(BaseModel):
+    guildId: Optional[str] = None
+    settings: Optional[Dict] = None
+    error: Optional[str] = None
+
+      
 class CoinPrice(BaseModel):
     coinKind: str
     priceInUSD: str

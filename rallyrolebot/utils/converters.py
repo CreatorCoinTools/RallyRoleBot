@@ -24,6 +24,7 @@ class CreatorCoin(commands.Converter):
         data = rally_api.get_price_data(argument)
         return {"symbol": argument, "data": data}
 
+
 class CurrencyType(commands.Converter):
     async def convert(self, ctx, argument):
         currencyType = argument.upper()
@@ -31,3 +32,12 @@ class CurrencyType(commands.Converter):
             raise errors.BadArgument("<currencyType> must be USD or COINS")
 
         return currencyType
+
+
+class TimeframeType(commands.Converter):
+    async def convert(self, ctx, argument):
+        timeframe = argument.lower()
+        if timeframe not in ['day', 'week']:
+            raise errors.BadArgument("<timeframe> argument must be day or week")
+
+        return timeframe
