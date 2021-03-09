@@ -1,11 +1,12 @@
 import data
 
-import config
-config.parse_args()
-
 from fastapi import APIRouter, Depends, HTTPException
 from .dependencies import owner_or_admin
 from .models import PrefixMapping
+
+import config
+config.parse_args()
+
 
 router = APIRouter(
     prefix="/mappings/prefix",

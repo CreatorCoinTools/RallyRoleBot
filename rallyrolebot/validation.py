@@ -1,8 +1,6 @@
 from discord.ext import commands
 from discord.utils import get
 
-from rally_api import valid_coin_symbol
-from coingecko_api import valid_coin
 import errors
 import data
 

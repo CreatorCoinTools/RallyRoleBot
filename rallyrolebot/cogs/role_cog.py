@@ -1,10 +1,9 @@
-import json
 import sys
 import traceback
 
 import discord
-from discord.ext import commands, tasks
-from discord.utils import get
+from discord.ext import commands
+from main import RallyRoleBot
 
 import data
 import rally_api
@@ -86,13 +85,17 @@ class RoleCommands(commands.Cog):
     @commands.command(name="get_role_mappings", help="Get role mappings")
     @validation.owner_or_permissions(administrator=True)
     async def get_role_mappings(self, ctx):
-        mappingsStr = "```Role   Coin   Amount\n\n"
+        mappings_str = "```Role   Coin   Amount\n\n"
         for mapping in data.get_role_mappings(ctx.guild.id):
-            mappingsStr += f"{mapping[ROLE_NAME_KEY]}   {mapping[COIN_KIND_KEY]}   {mapping[REQUIRED_BALANCE_KEY]}\n"
-        mappingsStr += "```"
+            mappings_str += f"{mapping[ROLE_NAME_KEY]}   {mapping[COIN_KIND_KEY]}   {mapping[REQUIRED_BALANCE_KEY]}\n"
+        mappings_str += "```"
         await pretty_print(
             ctx,
-            mappingsStr,
+            mappings_str,
             title=f"Role mappings",
             color=GREEN_COLOR,
         )
+
+
+def setup(bot: RallyRoleBot):
+    bot.add_cog(RoleCommands(bot))

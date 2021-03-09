@@ -1,6 +1,3 @@
-import json
-from datetime import datetime
-
 import requests
 
 from constants import *
@@ -8,7 +5,7 @@ from constants import *
 # TODO: Discuss specific details with Calvin before making changes
 
 
-def returnReqError(url, result):
+def return_req_error(url, result):
     print("Request error!")
     print(f"Url: {url}")
     print(f"Status Code: {result.status_code}")
@@ -20,7 +17,7 @@ def get_balances(rally_id):
     url = BASE_URL + "/users/rally/" + rally_id + "/balance"
     result = requests.get(url)
     if result.status_code != 200:
-        returnReqError(url, result)
+        return_req_error(url, result)
         return None
     return result.json()
 
@@ -52,7 +49,7 @@ def get_current_price(coin_name):
     url = BASE_URL + "/creator_coins/" + coin_name + "/price"
     result = requests.get(url)
     if result.status_code != 200:
-        returnReqError(url, result)
+        return_req_error(url, result)
         return False
     return result.json()
 
@@ -71,7 +68,7 @@ def get_coin_summary(coin):
     url = BASE_URL + "/creator_coins/" + coin + '/summary'
     result = requests.get(url)
     if result.status_code != 200:
-        returnReqError(url, result)
+        return_req_error(url, result)
         return False
 
     return result.json()
@@ -81,7 +78,7 @@ def get_creator_coins():
     url = BASE_URL + "/creator_coins"
     result = requests.get(url)
     if result.status_code != 200:
-        returnReqError(url, result)
+        return_req_error(url, result)
         return False
 
     return result.json()
@@ -91,7 +88,7 @@ def get_coin_rewards(coin):
     url = BASE_URL + "/creator_coins/" + coin + '/rewards'
     result = requests.get(url)
     if result.status_code != 200:
-        returnReqError(url, result)
+        return_req_error(url, result)
         return False
 
     return result.json()

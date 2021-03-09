@@ -1,4 +1,4 @@
-from cogs import update_cog
+from utils import alerts
 from fastapi import APIRouter, Request
 
 import config
@@ -13,4 +13,4 @@ router = APIRouter(
 @router.post("/{event}")
 async def add_mappings(request: Request):
     payload = await request.json()
-    return await update_cog.process_payload(payload)
+    return await alerts.process_payload(payload)

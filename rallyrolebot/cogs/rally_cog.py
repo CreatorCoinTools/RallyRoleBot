@@ -1,22 +1,18 @@
-import json
 import sys
 import traceback
 from typing import Union
 
-import discord
-from discord import Color
-from discord.ext import commands, tasks
-from discord.utils import get
+from discord.ext import commands
+from main import RallyRoleBot
 
 import data
 import rally_api
-import coingecko_api
 import validation
 import errors
 
 from urllib.parse import urlencode
 
-from utils import pretty_print, send_to_dm, gradient
+from utils import pretty_print, gradient
 from utils.converters import CreatorCoin, CommonCoin, CurrencyType
 from constants import *
 
@@ -45,7 +41,7 @@ class RallyCommands(commands.Cog):
         data.add_discord_rally_mapping(ctx.author.id, rally_id)
 
     @commands.command(name="price", help="Get the price data of a coin")
-    async def price(self, ctx, coin: Union[CreatorCoin, CommonCoin]):
+    async def price(self, ctx, coin: Union[CreatorCoin, CommonCoin, dict]):
         def get_gradient_color(percentage):
 
             percentage = 50 + int(percentage) / 2
@@ -58,17 +54,17 @@ class RallyCommands(commands.Cog):
                 percentage=percentage,
             )
 
-        data = coin["data"]
+        coin_data = coin["data"]
 
-        percentage_24h = data["price_change_percentage_24h"]
-        percentage_30d = data["price_change_percentage_30d"]
+        percentage_24h = coin_data["price_change_percentage_24h"]
+        percentage_30d = coin_data["price_change_percentage_30d"]
 
-        if not data:
+        if not coin_data:
             raise errors.RequestError("There was an error while fetching the coin data")
         else:
             await pretty_print(
                 ctx,
-                f"Current Price: {data['current_price']}",
+                f"Current Price: {coin_data['current_price']}",
                 title="Current Price",
                 color=WHITE_COLOR,
             )
@@ -97,13 +93,13 @@ class RallyCommands(commands.Cog):
     async def generate_coinlink_deeplink(
         self,
         ctx,
-        coin: Union[CreatorCoin, CommonCoin],
-        currencyType: CurrencyType,
+        coin: Union[CreatorCoin, CommonCoin, dict],
+        currency_type: CurrencyType,
         amount,
         *,
         memo: str = None,
     ):
-        params = {"inputType": currencyType, "amount": amount}
+        params = {"inputType": currency_type, "amount": amount}
         if memo is not None:
             params["note"] = memo
 
@@ -125,14 +121,18 @@ class RallyCommands(commands.Cog):
         rally_id = data.get_rally_id(ctx.message.author.id)
         balances = rally_api.get_balances(rally_id)
 
-        balanceStr = ""
+        balance_str = ""
 
         for balance in balances:
-            balanceStr += f"{balance['coinKind']}: {round(float(balance['coinBalance']), 2)} (Est. USD$ {round(float(balance['estimatedInUsd']), 2)})\n"
+            balance_str += f"{balance['coinKind']}: {round(float(balance['coinBalance']), 2)} (Est. USD$ {round(float(balance['estimatedInUsd']), 2)})\n"
 
         await pretty_print(
             ctx,
-            balanceStr,
+            balance_str,
             title=f"{ctx.message.author.name}'s Balance",
             color=WARNING_COLOR,
         )
+
+
+def setup(bot: RallyRoleBot):
+    bot.add_cog(RallyCommands(bot))

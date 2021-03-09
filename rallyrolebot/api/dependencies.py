@@ -4,7 +4,7 @@ import json
 
 from fastapi import Header, HTTPException
 
-from rally_api import returnReqError
+from rally_api import return_req_error
 from constants import *
 
 
@@ -13,22 +13,22 @@ def get_user(authorization):
     headers = {"authorization": authorization}
     result = requests.get(url, headers=headers)
     if result.status_code != 200:
-        returnReqError(url, result)
+        return_req_error(url, result)
         return None
     return result.json()
 
 
 def owner_or_admin_guilds(authorization):
-    userId = data.get_user_id(authorization)
-    if userId:
-        return json.loads(data.get_user_guilds(userId))
+    user_id = data.get_user_id(authorization)
+    if user_id:
+        return json.loads(data.get_user_guilds(user_id))
 
     user = get_user(authorization)
     url = DISCORD_API_URL + "/users/@me/guilds"
     headers = {"authorization": authorization}
     result = requests.get(url, headers=headers)
     if result.status_code != 200 or not user:
-        returnReqError(url, result)
+        return_req_error(url, result)
         return None
 
     guilds = [
@@ -46,5 +46,5 @@ def owner_or_admin_guilds(authorization):
 
 async def owner_or_admin(guildId: str, authorization: str = Header(...)):
     guilds = owner_or_admin_guilds(authorization)
-    if not guilds or not guildId in guilds:
+    if not guilds or guildId not in guilds:
         raise HTTPException(status_code=400, detail="you cannot access this record")

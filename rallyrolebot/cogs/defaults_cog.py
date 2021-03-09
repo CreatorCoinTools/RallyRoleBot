@@ -12,10 +12,9 @@ import validation
 import errors
 import aiohttp
 
-from cogs import update_cog
-
+from main import RallyRoleBot
 from constants import *
-from utils import pretty_print
+from utils import pretty_print, alerts
 from utils.converters import TimeframeType
 
 
@@ -111,9 +110,9 @@ class DefaultsCommands(commands.Cog):
 
         # get statistics
         if timeframe == 'day':
-            coin_stats = update_cog.get_day_stats(default_coin)
+            coin_stats = alerts.get_day_stats(default_coin)
         else:
-            coin_stats = update_cog.get_week_stats(default_coin)
+            coin_stats = alerts.get_week_stats(default_coin)
 
         rewards = rally_api.get_coin_rewards(default_coin)
         coin_image_url = rally_api.get_coin_image_url(default_coin)
@@ -219,13 +218,13 @@ class DefaultsCommands(commands.Cog):
     )
     @validation.owner_or_permissions(administrator=True)
     async def role_call(self, ctx, role: discord.Role):
-        usersStr = ""
+        users_str = ""
         for member in ctx.guild.members:
             if role in member.roles:
-                usersStr += f"{member}\n"
+                users_str += f"{member}\n"
         await pretty_print(
             ctx,
-            usersStr,
+            users_str,
             title=f"Users with {role} role",
             color=GREEN_COLOR,
         )
@@ -236,15 +235,19 @@ class DefaultsCommands(commands.Cog):
     )
     @validation.owner_or_permissions(administrator=True)
     async def list_all_users(self, ctx):
-        usersStr = ""
+        users_str = ""
         registered_users = data.get_all_users()
         for user in registered_users:
             member = await ctx.guild.fetch_member(user[DISCORD_ID_KEY])
             if member:
-                usersStr += f"{member}\nRallyId: {user[RALLY_ID_KEY]}\nDiscordId: {user[DISCORD_ID_KEY]}\n\n"
+                users_str += f"{member}\nRallyId: {user[RALLY_ID_KEY]}\nDiscordId: {user[DISCORD_ID_KEY]}\n\n"
         await pretty_print(
             ctx,
-            usersStr or "No registered users on this server",
+            users_str or "No registered users on this server",
             title=f"All registered users",
             color=GREEN_COLOR,
         )
+
+
+def setup(bot: RallyRoleBot):
+    bot.add_cog(DefaultsCommands(bot))

@@ -1,18 +1,14 @@
-import json
 import sys
 import traceback
-
 import discord
-from discord.ext import commands, tasks
-from discord.utils import get
-
 import errors
 import data
 import validation
 import rally_api
 
+from discord.ext import commands
 from cogs import update_cog
-
+from main import RallyRoleBot
 from utils import pretty_print
 from constants import *
 
@@ -105,13 +101,13 @@ class ChannelCommands(commands.Cog):
     @commands.command(name="get_channel_mappings", help="Get channel mappings")
     @validation.owner_or_permissions(administrator=True)
     async def get_channel_mappings(self, ctx):
-        mappingsStr = "```Channel   Coin   Amount\n\n"
+        mappings_str = "```Channel   Coin   Amount\n\n"
         for mapping in data.get_channel_mappings(ctx.guild.id):
-            mappingsStr += f"{mapping[CHANNEL_NAME_KEY]}   {mapping[COIN_KIND_KEY]}   {mapping[REQUIRED_BALANCE_KEY]}\n"
-        mappingsStr += "```"
+            mappings_str += f"{mapping[CHANNEL_NAME_KEY]}   {mapping[COIN_KIND_KEY]}   {mapping[REQUIRED_BALANCE_KEY]}\n"
+        mappings_str += "```"
         await pretty_print(
             ctx,
-            mappingsStr,
+            mappings_str,
             title=f"Role mappings",
             color=GREEN_COLOR,
         )
@@ -143,3 +139,7 @@ class ChannelCommands(commands.Cog):
             await ctx.send(message)
         else:
             await ctx.send(DEFAULT_DONATE_MESSAGE)
+
+
+def setup(bot: RallyRoleBot):
+    bot.add_cog(ChannelCommands(bot))

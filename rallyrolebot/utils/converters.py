@@ -27,11 +27,11 @@ class CreatorCoin(commands.Converter):
 
 class CurrencyType(commands.Converter):
     async def convert(self, ctx, argument):
-        currencyType = argument.upper()
-        if currencyType != "USD" and currencyType != "COINS":
-            raise errors.BadArgument("<currencyType> must be USD or COINS")
+        currency_type = argument.upper()
+        if currency_type != "USD" and currency_type != "COINS":
+            raise errors.BadArgument("<currency_type> must be USD or COINS")
 
-        return currencyType
+        return currency_type
 
 
 class TimeframeType(commands.Converter):

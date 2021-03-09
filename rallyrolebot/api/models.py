@@ -1,7 +1,6 @@
-from typing import Optional, Dict, List
+from typing import Optional, Dict
 from datetime import datetime
 from pydantic import BaseModel
-import json
 
 
 class ChannelMapping(BaseModel):

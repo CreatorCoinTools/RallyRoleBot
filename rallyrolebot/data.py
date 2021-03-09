@@ -1,7 +1,5 @@
-import dataset
 import datetime
 import json
-import config
 import time
 
 from constants import *
@@ -378,11 +376,11 @@ def get_last_24h_price(db, coin):
 
 
 @connect_db
-def set_bot_avatar(db, guildId, bot_avatar):
+def set_bot_avatar(db, guild_id, bot_avatar):
     table = db[BOT_INSTANCES_KEY]
     table.update(
         {
-            GUILD_ID_KEY: guildId,
+            GUILD_ID_KEY: guild_id,
             BOT_AVATAR_KEY: bot_avatar,
         },
         [GUILD_ID_KEY],
@@ -390,11 +388,11 @@ def set_bot_avatar(db, guildId, bot_avatar):
 
 
 @connect_db
-def set_bot_name(db, guildId, bot_name):
+def set_bot_name(db, guild_id, bot_name):
     table = db[BOT_INSTANCES_KEY]
     table.upsert(
         {
-            GUILD_ID_KEY: guildId,
+            GUILD_ID_KEY: guild_id,
             BOT_NAME_KEY: bot_name,
         },
         [GUILD_ID_KEY],
@@ -402,11 +400,11 @@ def set_bot_name(db, guildId, bot_name):
 
 
 @connect_db
-def set_bot_instance(db, botId, bot_instance):
+def set_bot_instance(db, bot_id, bot_instance):
     table = db[BOT_INSTANCES_KEY]
     table.upsert(
         {
-            BOT_ID_KEY: botId,
+            BOT_ID_KEY: bot_id,
             BOT_TOKEN_KEY: bot_instance,
         },
         [BOT_ID_KEY],
@@ -414,11 +412,11 @@ def set_bot_instance(db, botId, bot_instance):
 
 
 @connect_db
-def set_bot_id(db, botId, bot_instance):
+def set_bot_id(db, bot_id, bot_instance):
     table = db[BOT_INSTANCES_KEY]
     table.update(
         {
-            BOT_ID_KEY: botId,
+            BOT_ID_KEY: bot_id,
             BOT_TOKEN_KEY: bot_instance,
         },
         [BOT_TOKEN_KEY],
@@ -426,11 +424,11 @@ def set_bot_id(db, botId, bot_instance):
 
 
 @connect_db
-def add_bot_instance(db, guildId, bot_instance):
+def add_bot_instance(db, guild_id, bot_instance):
     table = db[BOT_INSTANCES_KEY]
     table.insert(
         {
-            GUILD_ID_KEY: guildId,
+            GUILD_ID_KEY: guild_id,
             BOT_TOKEN_KEY: bot_instance,
             BOT_AVATAR_KEY: DEFAULT_BOT_AVATAR_URL,
             BOT_NAME_KEY: "",
@@ -444,9 +442,9 @@ def add_bot_instance(db, guildId, bot_instance):
 
 
 @connect_db
-def get_bot_instance(db, guildId):
+def get_bot_instance(db, guild_id):
     table = db[BOT_INSTANCES_KEY]
-    return table.find_one(guildId=guildId)
+    return table.find_one(guildId=guild_id)
 
 
 @connect_db
@@ -456,9 +454,9 @@ def get_bot_instance_token(db, token):
 
 
 @connect_db
-def remove_bot_instance(db, guildId):
+def remove_bot_instance(db, guild_id):
     table = db[BOT_INSTANCES_KEY]
-    table.delete(guildId=guildId)
+    table.delete(guildId=guild_id)
 
 
 @connect_db
@@ -469,48 +467,48 @@ def get_all_bot_instances(db):
 
 
 @connect_db
-def set_avatar_timout(db, guildId, timout):
+def set_avatar_timout(db, guild_id, timout):
     table = db[BOT_INSTANCES_KEY]
     table.upsert(
         {
             AVATAR_TIMEOUT_KEY: timout,
-            GUILD_ID_KEY: guildId,
+            GUILD_ID_KEY: guild_id,
         },
         [GUILD_ID_KEY],
     )
 
 
 @connect_db
-def set_name_timeout(db, guildId, timeout):
+def set_name_timeout(db, guild_id, timeout):
     table = db[BOT_INSTANCES_KEY]
     table.upsert(
         {
             NAME_TIMEOUT_KEY: timeout,
-            GUILD_ID_KEY: guildId,
+            GUILD_ID_KEY: guild_id,
         },
         [GUILD_ID_KEY],
     )
 
 
 @connect_db
-def set_activity(db, guildId, activity_type, activity_text):
+def set_activity(db, guild_id, activity_type, activity_text):
     table = db[BOT_INSTANCES_KEY]
     table.upsert(
         {
             BOT_ACTIVITY_TYPE_KEY: activity_type,
             BOT_ACTIVITY_TEXT_KEY: activity_text,
-            GUILD_ID_KEY: guildId,
+            GUILD_ID_KEY: guild_id,
         },
         [GUILD_ID_KEY],
     )
 
 
 @connect_db
-def set_alerts_settings(db, guildId, alerts_settings):
+def set_alerts_settings(db, guild_id, alerts_settings):
     table = db[ALERT_SETTINGS_TABLE]
     table.upsert(
         {
-            GUILD_ID_KEY: guildId,
+            GUILD_ID_KEY: guild_id,
             ALERTS_SETTINGS_KEY: alerts_settings
         },
         [GUILD_ID_KEY]
@@ -518,9 +516,9 @@ def set_alerts_settings(db, guildId, alerts_settings):
 
 
 @connect_db
-def get_alerts_settings(db, guildId):
+def get_alerts_settings(db, guild_id):
     table = db[ALERT_SETTINGS_TABLE]
-    settings = table.find_one(guildId=guildId)
+    settings = table.find_one(guildId=guild_id)
     if settings:
         settings_dict = {
             ALERTS_SETTINGS_KEY: json.loads(settings[ALERTS_SETTINGS_KEY])
@@ -529,12 +527,12 @@ def get_alerts_settings(db, guildId):
 
 
 @connect_db
-def add_webhook(db, guildId, channelId, webhook_uri, webhook_id, webhook_token):
+def add_webhook(db, guild_id, channel_id, webhook_uri, webhook_id, webhook_token):
     table = db[WEBHOOKS_TABLE]
     table.upsert(
         {
-            GUILD_ID_KEY: guildId,
-            WEBHOOK_CHANNEL_ID: channelId,
+            GUILD_ID_KEY: guild_id,
+            WEBHOOK_CHANNEL_ID: channel_id,
             WEBHOOK_URI: webhook_uri,
             WEBHOOK_ID: webhook_id,
             WEBHOOK_TOKEN: webhook_token
@@ -544,9 +542,9 @@ def add_webhook(db, guildId, channelId, webhook_uri, webhook_id, webhook_token):
 
 
 @connect_db
-def get_webhook(db, guildId, channelId):
+def get_webhook(db, guild_id, channel_id):
     table = db[WEBHOOKS_TABLE]
-    return table.find_one(guildId=guildId, webhook_channel=channelId)
+    return table.find_one(guildId=guild_id, webhook_channel=channel_id)
 
 
 @connect_db
@@ -562,21 +560,21 @@ def add_timer(db, timer):
 
 
 @connect_db
-def get_timer(db, id):
+def get_timer(db, timer_id):
     table = db[TIMERS_TABLE]
-    return table.find_one(id=id)
+    return table.find_one(id=timer_id)
 
 
 @connect_db
-def delete_timer(db, id):
+def delete_timer(db, timer_id):
     table = db[TIMERS_TABLE]
-    table.delete(id=id)
+    table.delete(id=timer_id)
 
 
 @connect_db
-def delete_timers(db, guildId):
+def delete_timers(db, guild_id):
     table = db[TIMERS_TABLE]
-    table.delete(guild_id=guildId)
+    table.delete(guild_id=guild_id)
 
 
 @connect_db
@@ -631,9 +629,9 @@ def add_task(db, task):
 
 
 @connect_db
-def delete_task(db, id):
+def delete_task(db, task_id):
     table = db[TASKS_TABLE]
-    return table.delete(id=id)
+    return table.delete(id=task_id)
 
 
 @connect_db

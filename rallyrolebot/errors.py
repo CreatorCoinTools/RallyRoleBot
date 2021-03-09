@@ -27,6 +27,7 @@ class RequestError(commands.CommandError):
         super().__init__(*args, **kwargs)
         self.message = message
 
+
 class FatalError(commands.CommandError):
     def __init__(self, message, *args, **kwargs):
         super().__init__(*args, **kwargs)

@@ -1,8 +1,6 @@
 import data
-import discord
 import time
 
-from cogs import update_cog
 from fastapi import APIRouter, Depends, HTTPException
 from .dependencies import owner_or_admin
 from .models import BotNameMapping

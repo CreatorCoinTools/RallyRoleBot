@@ -1,9 +1,12 @@
 import errors
 
+from discord.ext import commands
+
 """ 
     A collection of useful decorators used for checking 
     certain properties of discord commands
 """
+
 
 # Case insensitive check for custom role
 def has_any_role(*roles):

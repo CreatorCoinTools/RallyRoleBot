@@ -6,10 +6,11 @@ import data
 import time
 import datetime
 import os
+import main
 
 from cogs import update_cog
 from constants import *
-from asyncio import ensure_future, create_task
+from asyncio import ensure_future
 from functools import wraps
 from traceback import format_exception
 from typing import Any, Callable, Coroutine, Optional, Union
@@ -111,7 +112,7 @@ async def update_avatar(guild_id: int, bot_id: int, new_avatar_path: str):
 
     # avatar change
     try:
-        bot_object = update_cog.running_bots[bot_id]['bot']
+        bot_object = main.running_bots[bot_id]['bot']
         await bot_object.user.edit(avatar=new_avatar)
         data.set_bot_avatar(guild_id, str(bot_object.user.avatar_url))
     except discord.HTTPException:
@@ -143,8 +144,8 @@ async def update_activity(guild_id: int, bot_id: int, activity_type_str: str, ac
         if not activity_type:
             return
 
-        current_activity = update_cog.running_bots[bot_id]['activity']
-        bot_object = update_cog.running_bots[bot_id]['bot']
+        current_activity = main.running_bots[bot_id]['activity']
+        bot_object = main.running_bots[bot_id]['bot']
 
         try:
             # check that current_activity isn't duplicate of new activity
@@ -152,7 +153,7 @@ async def update_activity(guild_id: int, bot_id: int, activity_type_str: str, ac
                     (current_activity and repr(current_activity.name) != repr(activity_text)):
                 # update all the needed stuff
                 new_activity = discord.Activity(type=activity_type, name=activity_text)
-                update_cog.running_bots[bot_id]['activity'] = new_activity
+                main.running_bots[bot_id]['activity'] = new_activity
                 await bot_object.change_presence(status=discord.Status.online, activity=new_activity)
                 data.set_activity(guild_id, activity_type_str, activity_text)
         except:
@@ -170,7 +171,7 @@ async def start_daily_stats_timers(guild_id: int, timezone, channel: str):
     """
     # get bot instance, if it isn't set, assume the bot being used is the main one
     bot_instance = data.get_bot_instance(guild_id)
-    bot_object = update_cog.main_bot if not bot_instance else update_cog.running_bots[bot_instance[BOT_ID_KEY]]['bot']
+    bot_object = main.main_bot if not bot_instance else main.running_bots[bot_instance[BOT_ID_KEY]]['bot']
 
     try:
         # get guild to see if bot has permission to manage webhooks
@@ -198,11 +199,10 @@ async def start_daily_stats_timers(guild_id: int, timezone, channel: str):
         return
 
     # get time until midnight
-    time_midnight = time.time() + (
-                ((24 - dt.hour - 1) * 60 * 60) + ((60 - dt.minute - 1) * 60) + (60 - dt.second))
+    time_midnight = time.time() + (((24 - dt.hour - 1) * 60 * 60) + ((60 - dt.minute - 1) * 60) + (60 - dt.second))
 
     # start new timer for instance
-    await bot_object.get_cog("UpdateTask").create_timer(
+    bot_object.timers.create(
         guild_id=guild_id,
         expires=time_midnight,
         event='daily_stats',
@@ -221,9 +221,9 @@ async def start_new_bot_instance(bot_token: str):
     @param bot_token: Token of the new bot
     """
     # add token to running bot instances list
-    update_cog.running_bot_instances.append(bot_token)
+    main.running_bot_instances.append(bot_token)
     # create task for bot startup
-    asyncio.create_task(update_cog.UpdateTask.start_bot_instance(bot_token))
+    asyncio.create_task(main.RallyRoleBot.start_bot_instance(bot_token))
 
 
 async def update_name(guild_id: int, bot_id: int, new_name: str):
@@ -234,7 +234,7 @@ async def update_name(guild_id: int, bot_id: int, new_name: str):
     @param bot_id: id of bot
     @param new_name: new neame of the bot
     """
-    bot_object = update_cog.running_bots[bot_id]['bot']
+    bot_object = main.running_bots[bot_id]['bot']
     # name change
     try:
         if new_name != bot_object.user.name:
@@ -253,16 +253,15 @@ async def delete_bot_instance(guild_id: int):
     Delete a bot instance and stop it
 
     @param guild_id: id of guild
-    @param bot_id: id of bot instance
     """
 
     bot_instance = data.get_bot_instance(guild_id)
     try:
         data.remove_bot_instance(guild_id)
-        update_cog.running_bot_instances.remove(bot_instance[BOT_TOKEN_KEY])
-        to_be_removed = update_cog.running_bots[bot_instance[BOT_ID_KEY]]
+        main.running_bot_instances.remove(bot_instance[BOT_TOKEN_KEY])
+        to_be_removed = main.running_bots[bot_instance[BOT_ID_KEY]]
         if to_be_removed:
             await to_be_removed['bot'].close()
-            del update_cog.running_bots[bot_instance[BOT_ID_KEY]]
+            del main.running_bots[bot_instance[BOT_ID_KEY]]
     except:
         pass

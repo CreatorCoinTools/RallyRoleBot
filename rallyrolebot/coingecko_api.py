@@ -1,11 +1,9 @@
-import json
-
 import requests
 
 from constants import *
 
 
-def returnReqError(url, result):
+def return_req_error(url, result):
     print("Request error!")
     print(f"Url: {url}")
     print(f"Status Code: {result.status_code}")
@@ -17,7 +15,7 @@ def get_coins_list():
     url = COINGECKO_API_URL + "/coins/list"
     result = requests.get(url)
     if result.status_code != 200:
-        returnReqError(url, result)
+        return_req_error(url, result)
         return False
 
     return result.json()
@@ -50,14 +48,14 @@ def get_id_from_symbol(symbol):
 
 
 def get_price_data(symbol):
-    id = get_id_from_symbol(symbol)
-    if id is False:
+    coin_id = get_id_from_symbol(symbol)
+    if coin_id is False:
         return False
 
-    url = COINGECKO_API_URL + "/coins/" + id
+    url = COINGECKO_API_URL + "/coins/" + coin_id
     result = requests.get(url)
     if result.status_code != 200:
-        returnReqError(url, result)
+        return_req_error(url, result)
         return False
 
     result = result.json()["market_data"]

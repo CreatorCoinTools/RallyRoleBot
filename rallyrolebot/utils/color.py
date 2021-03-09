@@ -1,7 +1,4 @@
-from discord import Color
-
 from constants import *
-import math
 
 
 def mix_colors(start_color, final_color, ratio=0.5):

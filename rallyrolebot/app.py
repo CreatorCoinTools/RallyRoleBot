@@ -1,8 +1,6 @@
 import uvicorn
-import asyncio
 
 import logging
-import time
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from utils.tasks import repeat_every
@@ -78,11 +76,11 @@ def get_prices():
         except:
             print(f"Failed to get price for {coin['coinSymbol']}")
     count = data.price_count()
-    max = int(config.CONFIG.cache_max)
-    print(f"Price cache updated, Count: {count}, Max: {max}")
-    if count > max:
-        data.clean_price_cache(count - max)
-        print(f"{count - max} cache entries removed")
+    cache_max = int(config.CONFIG.cache_max)
+    print(f"Price cache updated, Count: {count}, Max: {cache_max}")
+    if count > cache_max:
+        data.clean_price_cache(count - cache_max)
+        print(f"{count - cache_max} cache entries removed")
 
 
 if __name__ == "__main__":
